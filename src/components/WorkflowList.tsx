@@ -34,9 +34,8 @@ interface WorkflowListProps {
 export default async function WorkflowList({ workflows, searchParams }: WorkflowListProps) {
   const user = await requireAuth();
   
-  // Check user roles from publicMetadata
-  const userRoles = user.publicMetadata.roles as string[] | undefined;
-  const canModifyWorkflows = userRoles?.includes('ADMIN') || userRoles?.includes('SUPERVISOR');
+  // All users can modify workflows
+  const canModifyWorkflows = true;
   
   const filterRepairType = searchParams?.repairType;
   const showInactiveWorkflows = searchParams?.showInactive === 'true';

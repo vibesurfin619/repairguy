@@ -1,11 +1,11 @@
-import { requireRoleDbUser } from '@/lib/auth';
+import { requireDbUser } from '@/lib/auth';
 import { getAllUsers } from '@/actions/users';
 import UserManagement from '@/components/UserManagement';
 import type { User } from '@/lib/schema';
 
 export default async function UsersPage() {
-  // Require admin role to access this page
-  await requireRoleDbUser('ADMIN');
+  // Require authentication to access this page
+  await requireDbUser();
   
   // Fetch initial users data
   const usersResult = await getAllUsers();

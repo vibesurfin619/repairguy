@@ -3,12 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { 
-  syncAllUsersToRole, 
   syncClerkUsersToDatabase, 
-  getAllUsers, 
-  updateUserRoleAction,
-  type UpdateUserRoleInput,
-  type SyncAllUsersInput 
+  getAllUsers
 } from '@/actions/users';
 import type { User } from '@/lib/schema';
 
@@ -31,29 +27,9 @@ export default function UserManagement({ initialUsers = [] }: UserManagementProp
     setTimeout(() => setMessage(null), 5000);
   };
 
-  const handleSyncAllToTechnicians = () => {
-    startTransition(async () => {
-      const result = await syncAllUsersToRole({
-        defaultRole: 'TECHNICIAN',
-        updateClerkMetadata: true,
-      });
-
-      if (result.success) {
-        showMessage('success', result.message || 'All users updated to technicians');
-        // Refresh users list
-        const usersResult = await getAllUsers();
-        if (usersResult.success) {
-          setUsers(usersResult.users);
-        }
-      } else {
-        showMessage('error', result.error || 'Failed to sync users');
-      }
-    });
-  };
-
   const handleSyncClerkUsers = () => {
     startTransition(async () => {
-      const result = await syncClerkUsersToDatabase('TECHNICIAN');
+      const result = await syncClerkUsersToDatabase();
 
       if (result.success) {
         showMessage('success', result.message || 'Clerk users synced to database');
@@ -64,26 +40,6 @@ export default function UserManagement({ initialUsers = [] }: UserManagementProp
         }
       } else {
         showMessage('error', result.error || 'Failed to sync Clerk users');
-      }
-    });
-  };
-
-  const handleUpdateUserRole = (clerkId: string, newRole: 'TECHNICIAN' | 'ADMIN' | 'SUPERVISOR') => {
-    startTransition(async () => {
-      const result = await updateUserRoleAction({
-        clerkId,
-        role: newRole,
-      });
-
-      if (result.success) {
-        showMessage('success', result.message || 'User role updated');
-        // Refresh users list
-        const usersResult = await getAllUsers();
-        if (usersResult.success) {
-          setUsers(usersResult.users);
-        }
-      } else {
-        showMessage('error', result.error || 'Failed to update user role');
       }
     });
   };
@@ -104,7 +60,7 @@ export default function UserManagement({ initialUsers = [] }: UserManagementProp
     <div className="p-6 max-w-6xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">User Management</h1>
-        <p className="text-gray-600">Manage user roles and sync between Clerk and database</p>
+        <p className="text-gray-600">Manage users and sync between Clerk and database</p>
       </div>
 
       {/* Status Messages */}
@@ -120,15 +76,7 @@ export default function UserManagement({ initialUsers = [] }: UserManagementProp
 
       {/* Action Buttons */}
       <div className="mb-6 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={handleSyncAllToTechnicians}
-            disabled={isPending}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white px-4 py-2 rounded-md transition-colors"
-          >
-            {isPending ? 'Updating...' : 'Set All Users to Technicians'}
-          </button>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
             onClick={handleSyncClerkUsers}
             disabled={isPending}
@@ -146,13 +94,11 @@ export default function UserManagement({ initialUsers = [] }: UserManagementProp
           </button>
         </div>
 
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-          <h3 className="text-sm font-medium text-yellow-800 mb-2">Important Notes:</h3>
-          <ul className="text-sm text-yellow-700 space-y-1">
-            <li>• "Set All Users to Technicians" updates all existing database users to the TECHNICIAN role</li>
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <h3 className="text-sm font-medium text-blue-800 mb-2">Information:</h3>
+          <ul className="text-sm text-blue-700 space-y-1">
             <li>• "Sync Clerk Users to Database" creates database records for Clerk users not yet in the database</li>
-            <li>• Both operations will update Clerk metadata to match the database roles</li>
-            <li>• Only users with ADMIN role can perform these operations</li>
+            <li>• All users have equal access to all features</li>
           </ul>
         </div>
       </div>
@@ -179,13 +125,7 @@ export default function UserManagement({ initialUsers = [] }: UserManagementProp
                     Email
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Created
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
                   </th>
                 </tr>
               </thead>
@@ -203,36 +143,8 @@ export default function UserManagement({ initialUsers = [] }: UserManagementProp
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {user.email}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.role === 'ADMIN' 
-                          ? 'bg-red-100 text-red-800'
-                          : user.role === 'SUPERVISOR'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-blue-100 text-blue-800'
-                      }`}>
-                        {user.role}
-                      </span>
-                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(user.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <select
-                          value={user.role}
-                          onChange={(e) => handleUpdateUserRole(
-                            user.clerkId, 
-                            e.target.value as 'TECHNICIAN' | 'ADMIN' | 'SUPERVISOR'
-                          )}
-                          disabled={isPending}
-                          className="text-sm border border-gray-300 rounded px-2 py-1"
-                        >
-                          <option value="TECHNICIAN">Technician</option>
-                          <option value="SUPERVISOR">Supervisor</option>
-                          <option value="ADMIN">Admin</option>
-                        </select>
-                      </div>
                     </td>
                   </tr>
                 ))}

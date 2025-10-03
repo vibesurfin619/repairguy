@@ -29,24 +29,6 @@ export function useRequireAuth(redirectTo?: string) {
   return { isAuthenticated: !!userId, isLoading: !isLoaded };
 }
 
-/**
- * Custom hook for role-based access control
- */
-export function useRequireRole(role: string) {
-  const { user, isLoaded } = useUser();
-  const { isAuthenticated } = useRequireAuth();
-
-  const hasRole = isLoaded && user 
-    ? (user.publicMetadata.roles as string[] | undefined)?.includes(role) ?? false
-    : false;
-
-  return {
-    hasRole,
-    isLoading: !isLoaded,
-    isAuthenticated,
-    user
-  };
-}
 
 /**
  * Authentication guard component
@@ -55,14 +37,12 @@ export function useRequireRole(role: string) {
 interface AuthGuardProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
-  requireRole?: string;
 }
 
-export function AuthGuard({ children, fallback, requireRole }: AuthGuardProps) {
+export function AuthGuard({ children, fallback }: AuthGuardProps) {
   const { isAuthenticated, isLoading } = useRequireAuth();
-  const roleCheck = useRequireRole(requireRole || '');
 
-  if (isLoading || roleCheck.isLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
@@ -76,18 +56,6 @@ export function AuthGuard({ children, fallback, requireRole }: AuthGuardProps) {
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
           <p>Please sign in to access this page.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (requireRole && !roleCheck.hasRole) {
-    return fallback || (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">Access Denied</h2>
-          <p>You don't have permission to access this page.</p>
-          <p className="text-sm text-gray-600 mt-2">Required role: {requireRole}</p>
         </div>
       </div>
     );

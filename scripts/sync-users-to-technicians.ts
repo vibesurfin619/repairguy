@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 
 /**
- * Script to sync all users to technicians and update Clerk metadata
+ * Script to sync all users to database
  * Run with: npx tsx scripts/sync-users-to-technicians.ts
  */
 
@@ -10,8 +10,8 @@ import { db } from '../src/lib/db';
 import { users } from '../src/lib/schema';
 import { eq } from 'drizzle-orm';
 
-async function syncAllUsersToTechnicians() {
-  console.log('🚀 Starting user sync to technicians...');
+async function syncAllUsersToDatabase() {
+  console.log('🚀 Starting user sync to database...');
   
   try {
     // Get all users from Clerk
@@ -49,7 +49,6 @@ async function syncAllUsersToTechnicians() {
             name: clerkUser.firstName && clerkUser.lastName 
               ? `${clerkUser.firstName} ${clerkUser.lastName}` 
               : clerkUser.firstName || null,
-            role: 'TECHNICIAN',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           });
@@ -57,34 +56,7 @@ async function syncAllUsersToTechnicians() {
           console.log(`✅ Created new user in database`);
           results.created++;
         } else {
-          // Update existing user to technician if not already
-          if (existingUser.role !== 'TECHNICIAN') {
-            await db.update(users)
-              .set({ 
-                role: 'TECHNICIAN',
-                updatedAt: new Date().toISOString()
-              })
-              .where(eq(users.clerkId, clerkUser.id));
-            
-            console.log(`✅ Updated user role to TECHNICIAN in database`);
-            results.updated++;
-          } else {
-            console.log(`⏭️  User already has TECHNICIAN role`);
-          }
-        }
-        
-        // Update Clerk metadata
-        try {
-          await clerkClient.users.updateUserMetadata(clerkUser.id, {
-            publicMetadata: {
-              roles: ['TECHNICIAN'],
-            },
-          });
-          
-          console.log(`✅ Updated Clerk metadata`);
-          results.clerkUpdated++;
-        } catch (clerkError) {
-          console.error(`❌ Failed to update Clerk metadata for user ${clerkUser.id}:`, clerkError);
+          console.log(`⏭️  User already exists in database`);
         }
         
       } catch (error) {
@@ -96,11 +68,10 @@ async function syncAllUsersToTechnicians() {
     console.log('\n📊 Sync Results:');
     console.log(`- Created: ${results.created} users`);
     console.log(`- Updated: ${results.updated} users`);
-    console.log(`- Clerk metadata updated: ${results.clerkUpdated} users`);
     console.log(`- Errors: ${results.errors} users`);
     
     if (results.errors === 0) {
-      console.log('\n🎉 All users successfully synced to technicians!');
+      console.log('\n🎉 All users successfully synced to database!');
     } else {
       console.log('\n⚠️  Sync completed with some errors. Check the logs above.');
     }
@@ -113,7 +84,7 @@ async function syncAllUsersToTechnicians() {
 
 // Run the script
 if (require.main === module) {
-  syncAllUsersToTechnicians()
+  syncAllUsersToDatabase()
     .then(() => {
       console.log('✅ Script completed successfully');
       process.exit(0);

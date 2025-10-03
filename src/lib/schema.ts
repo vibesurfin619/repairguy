@@ -4,7 +4,6 @@ import { sql } from "drizzle-orm"
 export const itemStatus = pgEnum("ItemStatus", ['AWAITING_REPAIR', 'IN_REPAIR', 'COMPLETED', 'REQUIRES_REVIEW', 'SCRAP'])
 export const labelFormat = pgEnum("LabelFormat", ['PDF', 'ZPL'])
 export const repairSessionStatus = pgEnum("RepairSessionStatus", ['IN_PROGRESS', 'SUBMITTED', 'ABANDONED'])
-export const userRole = pgEnum("UserRole", ['TECHNICIAN', 'ADMIN', 'SUPERVISOR'])
 export const repairType = pgEnum("RepairType", ['TROLLEY_REPLACEMENT', 'HANDLE_REPLACEMENT', 'LINER_REPLACEMENT', 'ZIPPER_SLIDER', 'ZIPPER_TAPE', 'ZIPPER_FULL_REPLACEMENT', 'WHEEL_REPLACEMENT', 'LOCK_REPLACEMENT', 'LOGO_REPLACEMENT'])
 export const outstandingRepairStatus = pgEnum("OutstandingRepairStatus", ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'])
 
@@ -125,7 +124,6 @@ export const users = pgTable("users", {
 	clerkId: text().notNull(),
 	email: text().notNull(),
 	name: text(),
-	role: userRole().default('TECHNICIAN').notNull(),
 	createdAt: timestamp({ precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'string' }).notNull(),
 }, (table) => [

@@ -561,6 +561,96 @@ export const dbOperations = {
     return result[0] || null;
   },
 
+  // Outstanding Repairs Operations
+  async getOutstandingRepairs() {
+    if (!db) throw new Error('Database not initialized');
+    return await db.select().from(schema.outstandingRepairs).orderBy(desc(schema.outstandingRepairs.createdAt));
+  },
+
+  async getOutstandingRepairById(id: string) {
+    if (!db) throw new Error('Database not initialized');
+    const repairs = await db.select().from(schema.outstandingRepairs).where(eq(schema.outstandingRepairs.id, id));
+    return repairs[0] || null;
+  },
+
+  async getOutstandingRepairsByItemId(itemId: string) {
+    if (!db) throw new Error('Database not initialized');
+    return await db
+      .select()
+      .from(schema.outstandingRepairs)
+      .where(eq(schema.outstandingRepairs.itemId, itemId))
+      .orderBy(desc(schema.outstandingRepairs.createdAt));
+  },
+
+  async getOutstandingRepairsByTechnicianId(technicianId: string) {
+    if (!db) throw new Error('Database not initialized');
+    return await db
+      .select()
+      .from(schema.outstandingRepairs)
+      .where(eq(schema.outstandingRepairs.assignedTechnicianId, technicianId))
+      .orderBy(desc(schema.outstandingRepairs.createdAt));
+  },
+
+  async createOutstandingRepair(repair: {
+    itemId: string;
+    repairType: string;
+    status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+    description?: string;
+    priority?: number;
+    estimatedCost?: number;
+    actualCost?: number;
+    assignedTechnicianId?: string;
+  }) {
+    if (!db) throw new Error('Database not initialized');
+    const result = await db
+      .insert(schema.outstandingRepairs)
+      .values({
+        id: randomUUID(),
+        itemId: repair.itemId,
+        repairType: repair.repairType,
+        status: repair.status || 'PENDING',
+        description: repair.description,
+        priority: repair.priority || 1,
+        estimatedCost: repair.estimatedCost,
+        actualCost: repair.actualCost,
+        assignedTechnicianId: repair.assignedTechnicianId,
+        updatedAt: new Date().toISOString(),
+      })
+      .returning();
+    return result[0];
+  },
+
+  async updateOutstandingRepair(id: string, updates: {
+    status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+    description?: string;
+    priority?: number;
+    estimatedCost?: number;
+    actualCost?: number;
+    assignedTechnicianId?: string;
+    completedAt?: Date;
+  }) {
+    if (!db) throw new Error('Database not initialized');
+    const result = await db
+      .update(schema.outstandingRepairs)
+      .set({
+        ...updates,
+        ...(updates.completedAt && { completedAt: updates.completedAt.toISOString() }),
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(schema.outstandingRepairs.id, id))
+      .returning();
+    return result[0] || null;
+  },
+
+  async deleteOutstandingRepair(id: string) {
+    if (!db) throw new Error('Database not initialized');
+    const result = await db
+      .delete(schema.outstandingRepairs)
+      .where(eq(schema.outstandingRepairs.id, id))
+      .returning({ id: schema.outstandingRepairs.id });
+    return result[0] || null;
+  },
+
   // Custom query builder for complex operations
   getQueryBuilder() {
     if (!db) throw new Error('Database not initialized');

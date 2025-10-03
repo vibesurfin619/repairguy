@@ -1,14 +1,14 @@
 /**
  * Authentication utilities and rules for RepairGuy
  * This file enforces the use of Clerk as the sole authentication provider
- * Uses hybrid approach: roles stored in database, synced with Clerk metadata
+ * All users have equal access to all features
  */
 
 import { currentUser } from '@clerk/nextjs/server';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { db } from './db';
-import { users, type User, type UserRole } from './schema';
+import { users, type User } from './schema';
 import { eq } from 'drizzle-orm';
 
 // Authentication rule enforcement
@@ -90,55 +90,11 @@ export async function getCurrentDbUser(): Promise<User | null> {
 }
 
 /**
- * Check if user has specific role
- * Uses hybrid approach: checks database first, falls back to Clerk metadata
+ * Get current authenticated user from database
+ * Throws error if not authenticated or not found in database
  */
-export async function hasRole(role: string): Promise<boolean> {
-  const clerkUser = await getCurrentUser();
-  
-  if (!clerkUser) {
-    return false;
-  }
-  
-  // First, check database for role
-  const dbUser = await getDbUser(clerkUser.id);
-  if (dbUser) {
-    return dbUser.role === role;
-  }
-  
-  // Fallback to Clerk metadata if not found in database
-  const userRoles = clerkUser.publicMetadata.roles as string[] | undefined;
-  return userRoles?.includes(role) ?? false;
-}
-
-/**
- * Require specific role
- * Throws error if user doesn't have required role
- */
-export async function requireRole(role: string) {
+export async function requireDbUser(): Promise<User> {
   const clerkUser = await requireAuth();
-  const userHasRole = await hasRole(role);
-  
-  if (!userHasRole) {
-    throw new Error(`Access denied. Required role: ${role}`);
-  }
-  
-  // Return database user if available, otherwise return Clerk user
-  const dbUser = await getDbUser(clerkUser.id);
-  return dbUser || clerkUser;
-}
-
-/**
- * Require specific role and return database user
- * Throws error if user doesn't have required role or not found in database
- */
-export async function requireRoleDbUser(role: string): Promise<User> {
-  const clerkUser = await requireAuth();
-  const userHasRole = await hasRole(role);
-  
-  if (!userHasRole) {
-    throw new Error(`Access denied. Required role: ${role}`);
-  }
   
   const dbUser = await getDbUser(clerkUser.id);
   if (!dbUser) {
@@ -167,20 +123,21 @@ export async function authenticateApiRequest() {
 }
 
 /**
- * Sync user role between database and Clerk metadata
- * Creates or updates user in database and syncs role to Clerk
+ * Sync user to database
+ * Creates or updates user in database
  */
-export async function syncUserRole(clerkId: string, email: string, name?: string, role: UserRole = 'TECHNICIAN'): Promise<User> {
+export async function syncUser(clerkId: string, email: string, name?: string): Promise<User> {
   try {
     // Check if user exists in database
     const existingUser = await getDbUser(clerkId);
     
     if (existingUser) {
-      // Update existing user if role changed
-      if (existingUser.role !== role) {
+      // Update existing user if needed
+      if (existingUser.email !== email || existingUser.name !== name) {
         const [updatedUser] = await db.update(users)
           .set({ 
-            role, 
+            email,
+            name: name || null,
             updatedAt: new Date().toISOString() 
           })
           .where(eq(users.clerkId, clerkId))
@@ -197,7 +154,6 @@ export async function syncUserRole(clerkId: string, email: string, name?: string
           clerkId,
           email,
           name: name || null,
-          role,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })
@@ -206,36 +162,8 @@ export async function syncUserRole(clerkId: string, email: string, name?: string
       return newUser;
     }
   } catch (error) {
-    console.error('Error syncing user role:', error);
-    throw new Error('Failed to sync user role');
-  }
-}
-
-/**
- * Update user role in database and sync to Clerk metadata
- * This function should be called when roles are changed
- */
-export async function updateUserRole(clerkId: string, newRole: UserRole): Promise<User> {
-  try {
-    // Update database
-    const [updatedUser] = await db.update(users)
-      .set({ 
-        role: newRole, 
-        updatedAt: new Date().toISOString() 
-      })
-      .where(eq(users.clerkId, clerkId))
-      .returning();
-    
-    if (!updatedUser) {
-      throw new Error('User not found in database');
-    }
-    
-    // Note: Clerk metadata sync should be handled by webhooks or admin actions
-    // This function only updates the database
-    return updatedUser;
-  } catch (error) {
-    console.error('Error updating user role:', error);
-    throw new Error('Failed to update user role');
+    console.error('Error syncing user:', error);
+    throw new Error('Failed to sync user');
   }
 }
 

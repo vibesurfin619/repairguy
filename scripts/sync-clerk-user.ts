@@ -71,7 +71,7 @@ async function syncClerkUser() {
     if (!existingUser) {
       console.log('📝 Creating new user in database...');
       
-      // Create new user in database with TECHNICIAN role (default)
+      // Create new user in database
       const [newUser] = await db
         .insert(users)
         .values({
@@ -81,7 +81,6 @@ async function syncClerkUser() {
           name: clerkUser.first_name && clerkUser.last_name 
             ? `${clerkUser.first_name} ${clerkUser.last_name}` 
             : clerkUser.first_name || null,
-          role: 'TECHNICIAN', // Default role
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         })
@@ -90,12 +89,10 @@ async function syncClerkUser() {
       console.log('✅ Created new user in database');
       console.log(`   - ID: ${newUser.id}`);
       console.log(`   - Email: ${newUser.email}`);
-      console.log(`   - Role: ${newUser.role}`);
     } else {
       console.log('📝 User already exists in database');
       console.log(`   - ID: ${existingUser.id}`);
       console.log(`   - Email: ${existingUser.email}`);
-      console.log(`   - Role: ${existingUser.role}`);
       
       // Update user info if needed
       const needsUpdate = 
@@ -125,34 +122,7 @@ async function syncClerkUser() {
       }
     }
     
-    // Update Clerk metadata to match database role
-    console.log('🔄 Updating Clerk metadata...');
-    try {
-      const currentRole = existingUser?.role || 'TECHNICIAN';
-      
-      const updateResponse = await fetch(`https://api.clerk.com/v1/users/${clerkUserId}`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${process.env.CLERK_SECRET_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          public_metadata: {
-            roles: [currentRole],
-          },
-        }),
-      });
-      
-      if (!updateResponse.ok) {
-        throw new Error(`Clerk API update error: ${updateResponse.status} ${updateResponse.statusText}`);
-      }
-      
-      console.log(`✅ Updated Clerk metadata to ${currentRole} role`);
-    } catch (clerkError) {
-      console.error('❌ Failed to update Clerk metadata:', clerkError);
-      console.log('⚠️  Database sync completed successfully, but Clerk metadata update failed');
-      console.log('   You may need to manually update the user\'s metadata in Clerk Dashboard');
-    }
+    console.log('✅ User sync completed successfully');
     
     console.log('\n🎉 Successfully synced Clerk user with Neon database!');
     console.log('\n📋 Summary:');

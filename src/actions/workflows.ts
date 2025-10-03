@@ -27,14 +27,6 @@ import {
 export async function createWorkflowDefinition(input: CreateWorkflowDefinitionInput) {
   const user = await requireAuth();
   
-  // Check user roles from publicMetadata
-  const userRoles = user.publicMetadata.roles as string[] | undefined;
-  const hasPermission = userRoles?.includes('ADMIN') || userRoles?.includes('SUPERVISOR');
-  
-  if (!hasPermission) {
-    return { success: false, error: 'Insufficient permissions to create workflows' };
-  }
-  
   try {
     const validatedInput = createWorkflowDefinitionSchema.parse(input);
     
@@ -81,13 +73,6 @@ export async function createWorkflowDefinition(input: CreateWorkflowDefinitionIn
 export async function updateWorkflowDefinition(input: UpdateWorkflowDefinitionInput) {
   const user = await requireAuth();
   
-  // Check user roles from publicMetadata
-  const userRoles = user.publicMetadata.roles as string[] | undefined;
-  const hasPermission = userRoles?.includes('ADMIN') || userRoles?.includes('SUPERVISOR');
-  
-  if (!hasPermission) {
-    return { success: false, error: 'Insufficient permissions to update workflows' };
-  }
   
   try {
     const validatedInput = updateWorkflowDefinitionSchema.parse(input);
@@ -154,13 +139,6 @@ export async function updateWorkflowDefinition(input: UpdateWorkflowDefinitionIn
 export async function deleteWorkflowDefinition(workflowId: string) {
   const user = await requireAuth();
   
-  // Check user roles from publicMetadata
-  const userRoles = user.publicMetadata.roles as string[] | undefined;
-  const hasPermission = userRoles?.includes('ADMIN') || userRoles?.includes('SUPERVISOR');
-  
-  if (!hasPermission) {
-    return { success: false, error: 'Insufficient permissions to delete workflows' };
-  }
   
   try {
     const result = await dbOperations.deleteWorkflowDefinition(workflowId);
@@ -181,13 +159,6 @@ export async function deleteWorkflowDefinition(workflowId: string) {
 export async function createWorkflowQuestion(input: CreateWorkflowQuestionInput) {
   const user = await requireAuth();
   
-  // Check user roles from publicMetadata
-  const userRoles = user.publicMetadata.roles as string[] | undefined;
-  const hasPermission = userRoles?.includes('ADMIN') || userRoles?.includes('SUPERVISOR');
-  
-  if (!hasPermission) {
-    return { success: false, error: 'Insufficient permissions to create workflow questions' };
-  }
   
   try {
     const validatedInput = createWorkflowQuestionSchema.parse(input);
@@ -210,13 +181,6 @@ export async function createWorkflowQuestion(input: CreateWorkflowQuestionInput)
 export async function updateWorkflowQuestion(input: UpdateWorkflowQuestionInput) {
   const user = await requireAuth();
   
-  // Check user roles from publicMetadata
-  const userRoles = user.publicMetadata.roles as string[] | undefined;
-  const hasPermission = userRoles?.includes('ADMIN') || userRoles?.includes('SUPERVISOR');
-  
-  if (!hasPermission) {
-    return { success: false, error: 'Insufficient permissions to update workflow questions' };
-  }
 
   try {
     const validatedInput = updateWorkflowQuestionSchema.parse(input);
@@ -245,13 +209,6 @@ export async function updateWorkflowQuestion(input: UpdateWorkflowQuestionInput)
 export async function createGradingRule(input: CreateGradingRuleInput) {
   const user = await requireAuth();
   
-  // Check user roles from publicMetadata
-  const userRoles = user.publicMetadata.roles as string[] | undefined;
-  const hasPermission = userRoles?.includes('ADMIN') || userRoles?.includes('SUPERVISOR');
-  
-  if (!hasPermission) {
-    return { success: false, error: 'Insufficient permissions to create grading rules' };
-  }
   
   try {
     const validatedInput = createGradingRuleSchema.parse(input);
@@ -319,13 +276,6 @@ export async function createWorkflowFailureAnswer(
 ) {
   const user = await requireAuth();
   
-  // Check user roles from publicMetadata
-  const userRoles = user.publicMetadata.roles as string[] | undefined;
-  const hasPermission = userRoles?.includes('ADMIN') || userRoles?.includes('SUPERVISOR');
-  
-  if (!hasPermission) {
-    return { success: false, error: 'Insufficient permissions to create failure answers' };
-  }
 
   try {
     const validatedFailureAnswer = failureAnswerSchema.parse(failureAnswer);
@@ -351,13 +301,6 @@ export async function createWorkflowFailureAnswer(
 export async function deleteWorkflowFailureAnswer(failureAnswerId: string) {
   const user = await requireAuth();
   
-  // Check user roles from publicMetadata
-  const userRoles = user.publicMetadata.roles as string[] | undefined;
-  const hasPermission = userRoles?.includes('ADMIN') || userRoles?.includes('SUPERVISOR');
-  
-  if (!hasPermission) {
-    return { success: false, error: 'Insufficient permissions to delete failure answers' };
-  }
   
   try {
     const result = await dbOperations.deleteWorkflowFailureAnswer(failureAnswerId);
