@@ -1,0 +1,438 @@
+# RepairGuy - Cursor Rules
+
+## Project Overview
+RepairGuy is a Next.js 15 repair management system with TypeScript, using Clerk for authentication, Drizzle ORM with PostgreSQL (Neon), and Tailwind CSS.
+
+## 🔐 CRITICAL SECURITY RULES - READ FIRST
+
+### Authentication is MANDATORY
+- **ALL database access MUST be protected by Clerk authentication**
+- **NO database operations without verified user authentication**
+- **NEVER create public database endpoints**
+- User authentication is handled EXCLUSIVELY by Clerk - do not implement custom auth
+
+### Authentication Implementation Requirements
+1. **API Routes**: Use `withAuth()` wrapper from `/src/lib/auth-api.ts` for all database-related endpoints
+2. **Server Components**: Use `requireAuth()` or `requireAuthWithRedirect()` from `/src/lib/auth.ts`
+3. **Client Components**: Use Clerk's `useUser()` hook and check for null values
+4. **Middleware**: Already configured in `/src/middleware.ts` - routes under `/api/data/*` are protected
+
+### Database Access Rules
+- All database queries MUST include user authentication validation
+- Users table links to Clerk via `clerkId` field - use this for user identification
+- Role-based access control uses `UserRole` enum: TECHNICIAN, ADMIN, SUPERVISOR
+- Never expose internal IDs or sensitive data to unauthorized users
+
+## 📁 Project Structure
+
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── data/           # Protected database endpoints
+│   │   └── protected/      # Example protected route
+│   ├── dashboard/          # Protected dashboard pages
+│   └── database/           # Database management UI
+├── lib/
+│   ├── auth.ts            # Server-side auth utilities
+│   ├── auth-api.ts        # API route auth wrapper
+│   ├── auth-client.tsx    # Client-side auth components
+│   ├── db.ts              # Database connection
+│   └── schema.ts          # Drizzle schema definitions
+└── middleware.ts          # Route protection middleware
+```
+
+## 🛠 Technology Stack
+
+- **Framework**: Next.js 15 (App Router)
+- **Language**: TypeScript (strict mode)
+- **Authentication**: Clerk (@clerk/nextjs)
+- **Database**: PostgreSQL via Neon (@neondatabase/serverless)
+- **ORM**: Drizzle ORM with Drizzle Kit
+- **Validation**: Zod for all data validation
+- **Styling**: Tailwind CSS
+- **State Management**: React hooks + Server Components
+
+## 📊 Database Schema
+
+### Core Entities
+- `users` - Links to Clerk via `clerkId`, has `UserRole`
+- `items` - Repair items with `ItemStatus` and workflow tracking
+- `workflow_definitions` - Repair workflows with questions and grading
+- `repair_sessions` - Active repair work by technicians
+- `repair_answers` - Responses to workflow questions
+- `labels` - Generated labels for items
+
+### Key Relationships
+- Users have repair sessions (technician relationship)
+- Items have repair sessions and labels
+- Workflows have questions and grading rules
+- Sessions have answers to workflow questions
+
+## 🔒 Authentication Patterns
+
+### API Route Protection
+```typescript
+import { withAuth } from '@/lib/auth-api';
+
+export const GET = withAuth(async (req, { userId, user }) => {
+  // userId is guaranteed to exist here
+  // Perform database operations safely
+});
+```
+
+### Server Component Protection
+```typescript
+import { requireAuth } from '@/lib/auth';
+
+export default async function ProtectedPage() {
+  const user = await requireAuth(); // Throws if not authenticated
+  // Component logic here
+}
+```
+
+### Client Component Protection
+```typescript
+import { useUser } from '@clerk/nextjs';
+
+export default function ClientComponent() {
+  const { user, isLoaded } = useUser();
+  
+  if (!isLoaded || !user) {
+    return <div>Please sign in to continue</div>;
+  }
+  
+  // Component logic here
+}
+```
+
+## 📊 DATA HANDLING ARCHITECTURE - CRITICAL RULES
+
+### Data Retrieval Rules
+- **ALL data retrieval MUST be done via Server Components**
+- **NEVER fetch data in Client Components using useEffect or similar**
+- **NO direct database calls from Client Components**
+- Use Server Components to fetch and pass data down to Client Components as props
+
+### Data Mutation Rules
+- **ALL database mutations (INSERT/UPDATE/DELETE) MUST use Server Actions**
+- **NEVER use API routes for database mutations**
+- **ALL Server Actions MUST be in separate files with "use server" directive**
+- Server Actions should be organized by domain (e.g., `/actions/items.ts`, `/actions/sessions.ts`)
+
+### Data Validation Rules
+- **ALL data validation MUST use Zod schemas**
+- **ALL Server Action inputs MUST be validated with Zod**
+- **NEVER use FormData as TypeScript type - always parse to proper types**
+- **ALL database inputs MUST have corresponding Zod schema validation**
+- Define validation schemas alongside database schemas in `/lib/validations/`
+
+### Data Flow Pattern
+```
+Client Component → Server Action (with Zod validation) → Database
+Server Component → Database → Props → Client Component
+```
+
+## 🎯 DATA HANDLING PATTERNS
+
+### Server Component Data Fetching
+```typescript
+import { requireAuth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { items } from '@/lib/schema';
+import { eq } from 'drizzle-orm';
+
+export default async function ItemsPage() {
+  const user = await requireAuth();
+  
+  // Fetch data in Server Component
+  const userItems = await db.select()
+    .from(items)
+    .where(eq(items.userId, user.id));
+  
+  return <ItemsList items={userItems} />;
+}
+```
+
+### Server Action Implementation
+```typescript
+// File: /src/actions/items.ts
+'use server';
+
+import { z } from 'zod';
+import { requireAuth } from '@/lib/auth';
+import { db } from '@/lib/db';
+import { items } from '@/lib/schema';
+import { revalidatePath } from 'next/cache';
+
+const createItemSchema = z.object({
+  name: z.string().min(1).max(255),
+  description: z.string().optional(),
+  workflowId: z.number().int().positive(),
+});
+
+type CreateItemInput = z.infer<typeof createItemSchema>;
+
+export async function createItem(input: CreateItemInput) {
+  const user = await requireAuth();
+  
+  // Validate input with Zod
+  const validatedInput = createItemSchema.parse(input);
+  
+  try {
+    const [newItem] = await db.insert(items)
+      .values({
+        ...validatedInput,
+        userId: user.id,
+        status: 'PENDING',
+        createdAt: new Date(),
+      })
+      .returning();
+    
+    revalidatePath('/dashboard/items');
+    return { success: true, item: newItem };
+  } catch (error) {
+    console.error('Failed to create item:', error);
+    return { success: false, error: 'Failed to create item' };
+  }
+}
+```
+
+### Client Component with Server Action
+```typescript
+'use client';
+
+import { createItem } from '@/actions/items';
+import { useState, useTransition } from 'react';
+import { useUser } from '@clerk/nextjs';
+
+interface CreateItemFormProps {
+  workflows: { id: number; name: string }[];
+}
+
+export default function CreateItemForm({ workflows }: CreateItemFormProps) {
+  const { user } = useUser();
+  const [isPending, startTransition] = useTransition();
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    workflowId: 0,
+  });
+
+  if (!user) return <div>Please sign in</div>;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    startTransition(async () => {
+      // Pass properly typed data to Server Action
+      const result = await createItem({
+        name: formData.name,
+        description: formData.description,
+        workflowId: formData.workflowId,
+      });
+      
+      if (result.success) {
+        setFormData({ name: '', description: '', workflowId: 0 });
+      }
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {/* Form fields */}
+      <button type="submit" disabled={isPending}>
+        {isPending ? 'Creating...' : 'Create Item'}
+      </button>
+    </form>
+  );
+}
+```
+
+### Zod Schema Organization
+```typescript
+// File: /src/lib/validations/items.ts
+import { z } from 'zod';
+
+export const createItemSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(255, 'Name too long'),
+  description: z.string().optional(),
+  workflowId: z.number().int().positive('Valid workflow required'),
+});
+
+export const updateItemSchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string().min(1).max(255).optional(),
+  description: z.string().optional(),
+  status: z.enum(['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
+});
+
+export type CreateItemInput = z.infer<typeof createItemSchema>;
+export type UpdateItemInput = z.infer<typeof updateItemSchema>;
+```
+
+## 📝 Coding Standards
+
+### TypeScript
+- Use strict mode with proper typing
+- Export types from schema: `Item`, `User`, `RepairSession`, etc.
+- Use type guards for runtime type checking
+- Prefer interface over type for object definitions
+- **NEVER use FormData as a TypeScript type - always parse to proper types**
+
+### Data Validation
+- **ALL inputs MUST be validated with Zod schemas**
+- Create separate validation schema files in `/lib/validations/`
+- Use `z.infer<>` to generate TypeScript types from Zod schemas
+- Validate at the boundaries: Server Actions, API routes, form submissions
+- Include meaningful error messages in Zod schemas
+
+### Database Operations
+- Always use Drizzle ORM - no raw SQL
+- Use transactions for multi-table operations
+- Implement proper error handling with try/catch
+- Log database errors for debugging
+- **ALL database reads MUST be in Server Components**
+- **ALL database writes MUST be via Server Actions**
+
+### Server Actions
+- Place Server Actions in separate files under `/src/actions/`
+- Always include "use server" directive at the top
+- Validate all inputs with Zod before processing
+- Use proper TypeScript types (not FormData)
+- Handle errors gracefully and return meaningful results
+- Use `revalidatePath()` or `revalidateTag()` after mutations
+- Always authenticate users before database operations
+
+### Server Components
+- Use for all data fetching operations
+- Pass data to Client Components via props
+- Implement proper error boundaries
+- Handle authentication with `requireAuth()` utilities
+- Keep data fetching logic simple and focused
+
+### Client Components
+- Use "use client" directive when needed
+- Handle loading states with `useTransition()` for Server Actions
+- Never directly access the database
+- Receive data only via props from Server Components
+- Use proper TypeScript types for all data
+
+### API Routes
+- **DEPRECATED for database mutations - use Server Actions instead**
+- Only use for external API integrations or webhooks
+- Use Next.js App Router conventions
+- Return proper HTTP status codes
+- Include error messages in JSON responses
+- Validate input data with Zod schemas
+
+### UI Components
+- Use Tailwind CSS for styling
+- Implement loading states for async operations
+- Show authentication states clearly
+- Use semantic HTML elements
+
+## 🚨 Security Checklist
+
+Before implementing any feature, verify:
+
+- [ ] Route is properly protected by middleware
+- [ ] Database access uses authenticated user context
+- [ ] User roles are checked for sensitive operations
+- [ ] Input validation is implemented with Zod schemas
+- [ ] Error messages don't leak sensitive information
+- [ ] Clerk authentication is used throughout
+
+## 🚨 Data Handling Checklist
+
+Before implementing any data feature, verify:
+
+- [ ] Data retrieval is done in Server Components only
+- [ ] Database mutations use Server Actions (not API routes)
+- [ ] All Server Action inputs are validated with Zod
+- [ ] TypeScript types are derived from Zod schemas (no FormData types)
+- [ ] Server Actions include proper error handling
+- [ ] `revalidatePath()` is called after mutations
+- [ ] Client Components receive data via props only
+- [ ] Loading states are handled with `useTransition()`
+
+## 🔧 Development Workflow
+
+1. **Authentication First**: Always implement auth before database access
+2. **Data Architecture**: Server Components for reads, Server Actions for writes
+3. **Validation First**: Create Zod schemas before implementing features
+4. **Type Safety**: Use TypeScript types derived from Zod schemas
+5. **Error Handling**: Implement comprehensive error boundaries
+6. **Testing**: Test both authenticated and unauthenticated scenarios
+7. **Security Review**: Verify all database access is protected
+
+## 📋 Common Patterns
+
+### Creating Server Actions (PREFERRED for database mutations)
+1. Create dedicated action files in `/src/actions/`
+2. Add "use server" directive at the top
+3. Define Zod schema for input validation
+4. Authenticate user with `requireAuth()`
+5. Validate input with Zod schema
+6. Perform database operation
+7. Use `revalidatePath()` after mutations
+8. Return typed success/error results
+
+### Creating Protected API Endpoints (DEPRECATED for database mutations)
+1. Use `withAuth()` wrapper
+2. Validate user permissions if needed
+3. Perform database operations with user context
+4. Return appropriate responses
+5. **NOTE**: Use Server Actions instead for database mutations
+
+### Server Component Data Fetching Pattern
+1. Use `requireAuth()` for authentication
+2. Fetch data directly from database
+3. Pass data to Client Components via props
+4. Handle errors with error boundaries
+
+### Client Component with Server Action Pattern
+1. Use "use client" directive
+2. Import Server Action
+3. Use `useTransition()` for loading states
+4. Call Server Action with properly typed data
+5. Handle success/error responses
+
+### User Role Checking
+```typescript
+import { requireRole } from '@/lib/auth';
+
+// In server components or API routes
+const user = await requireRole('ADMIN'); // Throws if not admin
+```
+
+### Database Queries with User Context
+```typescript
+// Always filter by user context where applicable
+const userSessions = await db.select()
+  .from(repairSessions)
+  .where(eq(repairSessions.technicianId, userId));
+```
+
+## ⚠️ Important Notes
+
+- Never bypass authentication for "testing" or "debugging"
+- All environment variables must be validated in `env-validation.ts`
+- Use the existing auth utilities instead of creating new ones
+- Follow the established patterns in existing protected routes
+- Database migrations should be reviewed for security implications
+- **NEVER fetch data in Client Components - use Server Components only**
+- **NEVER use API routes for database mutations - use Server Actions**
+- **ALWAYS validate inputs with Zod schemas before database operations**
+- **NEVER use FormData as TypeScript type - parse to proper types**
+- **Server Actions must be in separate files with "use server" directive**
+
+## 🎯 Key Business Rules
+
+- Only authenticated technicians can create repair sessions
+- Admins can view all data, technicians only their own sessions
+- Items must have valid workflows before repair can begin
+- All repair actions must be logged and traceable
+- Labels can only be printed by authenticated users
+
+Remember: **Security is not optional**. Every database interaction must be authenticated and authorized.

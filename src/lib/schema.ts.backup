@@ -1,0 +1,153 @@
+import { pgTable, uuid, varchar, text, timestamp, boolean, integer, jsonb } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+
+// Items table
+export const items = pgTable('items', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  brand: varchar('brand', { length: 100 }),
+  model: varchar('model', { length: 100 }),
+  category: varchar('category', { length: 100 }),
+  createdBy: varchar('created_by', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Workflow definitions table
+export const workflowDefinitions = pgTable('workflow_definitions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  category: varchar('category', { length: 100 }),
+  createdBy: varchar('created_by', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Workflow questions table
+export const workflowQuestions = pgTable('workflow_questions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workflowDefinitionId: uuid('workflow_definition_id').notNull().references(() => workflowDefinitions.id),
+  questionText: text('question_text').notNull(),
+  questionType: varchar('question_type', { length: 50 }).notNull(),
+  options: jsonb('options'),
+  stepOrder: integer('step_order').notNull(),
+  isRequired: boolean('is_required').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Repair sessions table
+export const repairSessions = pgTable('repair_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  itemId: uuid('item_id').notNull().references(() => items.id),
+  workflowDefinitionId: uuid('workflow_definition_id').notNull().references(() => workflowDefinitions.id),
+  status: varchar('status', { length: 50 }).default('started').notNull(),
+  notes: text('notes'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Repair answers table (for storing answers to workflow questions)
+export const repairAnswers = pgTable('repair_answers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  repairSessionId: uuid('repair_session_id').notNull().references(() => repairSessions.id),
+  workflowQuestionId: uuid('workflow_question_id').notNull().references(() => workflowQuestions.id),
+  answer: text('answer').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Grading rules table (if needed for future features)
+export const gradingRules = pgTable('grading_rules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  workflowDefinitionId: uuid('workflow_definition_id').notNull().references(() => workflowDefinitions.id),
+  ruleName: varchar('rule_name', { length: 255 }).notNull(),
+  ruleLogic: jsonb('rule_logic').notNull(),
+  createdBy: varchar('created_by', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Labels table (for categorization)
+export const labels = pgTable('labels', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: varchar('name', { length: 100 }).notNull().unique(),
+  color: varchar('color', { length: 7 }).default('#000000'),
+  description: text('description'),
+  createdBy: varchar('created_by', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Relations
+export const itemsRelations = relations(items, ({ many }) => ({
+  repairSessions: many(repairSessions),
+}));
+
+export const workflowDefinitionsRelations = relations(workflowDefinitions, ({ many }) => ({
+  questions: many(workflowQuestions),
+  repairSessions: many(repairSessions),
+  gradingRules: many(gradingRules),
+}));
+
+export const workflowQuestionsRelations = relations(workflowQuestions, ({ one, many }) => ({
+  workflowDefinition: one(workflowDefinitions, {
+    fields: [workflowQuestions.workflowDefinitionId],
+    references: [workflowDefinitions.id],
+  }),
+  answers: many(repairAnswers),
+}));
+
+export const repairSessionsRelations = relations(repairSessions, ({ one, many }) => ({
+  item: one(items, {
+    fields: [repairSessions.itemId],
+    references: [items.id],
+  }),
+  workflowDefinition: one(workflowDefinitions, {
+    fields: [repairSessions.workflowDefinitionId],
+    references: [workflowDefinitions.id],
+  }),
+  answers: many(repairAnswers),
+}));
+
+export const repairAnswersRelations = relations(repairAnswers, ({ one }) => ({
+  repairSession: one(repairSessions, {
+    fields: [repairAnswers.repairSessionId],
+    references: [repairSessions.id],
+  }),
+  workflowQuestion: one(workflowQuestions, {
+    fields: [repairAnswers.workflowQuestionId],
+    references: [workflowQuestions.id],
+  }),
+}));
+
+export const gradingRulesRelations = relations(gradingRules, ({ one }) => ({
+  workflowDefinition: one(workflowDefinitions, {
+    fields: [gradingRules.workflowDefinitionId],
+    references: [workflowDefinitions.id],
+  }),
+}));
+
+// Export types for use in the application
+export type Item = typeof items.$inferSelect;
+export type NewItem = typeof items.$inferInsert;
+
+export type WorkflowDefinition = typeof workflowDefinitions.$inferSelect;
+export type NewWorkflowDefinition = typeof workflowDefinitions.$inferInsert;
+
+export type WorkflowQuestion = typeof workflowQuestions.$inferSelect;
+export type NewWorkflowQuestion = typeof workflowQuestions.$inferInsert;
+
+export type RepairSession = typeof repairSessions.$inferSelect;
+export type NewRepairSession = typeof repairSessions.$inferInsert;
+
+export type RepairAnswer = typeof repairAnswers.$inferSelect;
+export type NewRepairAnswer = typeof repairAnswers.$inferInsert;
+
+export type GradingRule = typeof gradingRules.$inferSelect;
+export type NewGradingRule = typeof gradingRules.$inferInsert;
+
+export type Label = typeof labels.$inferSelect;
+export type NewLabel = typeof labels.$inferInsert;
