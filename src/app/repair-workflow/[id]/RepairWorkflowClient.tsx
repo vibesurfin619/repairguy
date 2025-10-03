@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { completeRepair } from '@/actions/repair-workflow';
 import { OutstandingRepair, WorkflowDefinition, WorkflowFailureAnswer } from '@/lib/schema';
@@ -38,6 +38,26 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
   const [selectedFailureReason, setSelectedFailureReason] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [repairCompleted, setRepairCompleted] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [remainingRepairs, setRemainingRepairs] = useState<Array<{
+    id: string;
+    repairType: string;
+    description: string | null;
+    priority: number;
+  }>>([]);
+
+  // Initialize UI state based on actual repair status
+  useEffect(() => {
+    const isAlreadyCompleted = repair.status !== 'PENDING';
+    setRepairCompleted(isAlreadyCompleted);
+    
+    if (isAlreadyCompleted) {
+      setShowCompletionForm(true);
+      setSuccessMessage(`This repair has already been ${repair.status.toLowerCase().replace('_', ' ')}.`);
+    }
+  }, [repair.status]);
 
 
   const handleViewSOP = () => {
@@ -45,6 +65,10 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
   };
 
   const handleCompletionSubmit = () => {
+    if (isPending || isSubmitting || repairCompleted) {
+      return;
+    }
+
     if (wasSuccessful === null) {
       setError('Please select whether the repair was successful');
       return;
@@ -56,6 +80,7 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
     }
 
     setError(null);
+    setIsSubmitting(true);
 
     startTransition(async () => {
       try {
@@ -67,14 +92,35 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
         });
 
         if (result.success) {
-          // Navigate back to dashboard
-          router.push('/dashboard');
+          // Mark repair as completed to prevent resubmission
+          setRepairCompleted(true);
+          // Show success message instead of redirecting
+          setError(null);
+          setSuccessMessage(wasSuccessful ? 
+            'Repair completed successfully! The repair has been submitted and recorded.' : 
+            'Repair status updated. The repair could not be completed and has been marked accordingly.'
+          );
+          // Store remaining repairs if any
+          if (result.remainingRepairs && result.remainingRepairs.length > 0) {
+            setRemainingRepairs(result.remainingRepairs);
+          }
         } else {
-          setError(result.error || 'Failed to complete repair');
+          // Handle the case where repair is already completed
+          if (result.error?.includes('already') && result.repair) {
+            // Mark repair as completed to prevent resubmission
+            setRepairCompleted(true);
+            // Show success message instead of redirecting
+            setError(null);
+            setSuccessMessage('This repair has already been completed.');
+          } else {
+            setError(result.error || 'Failed to complete repair');
+          }
         }
       } catch (err) {
         console.error('Error completing repair:', err);
         setError('An unexpected error occurred');
+      } finally {
+        setIsSubmitting(false);
       }
     });
   };
@@ -265,7 +311,7 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
       </div>
 
       {/* Completion Form */}
-      {!showCompletionForm ? (
+      {!showCompletionForm && repair.status === 'PENDING' && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Ready to Complete Repair?</h2>
           <p className="text-gray-600 mb-6">
@@ -282,7 +328,9 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
             Complete Repair
           </button>
         </div>
-      ) : (
+      )}
+
+      {showCompletionForm && !repairCompleted && repair.status === 'PENDING' && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Repair Completion</h2>
           
@@ -296,6 +344,21 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
                 </div>
                 <div className="ml-3">
                   <p className="text-sm text-red-800">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-green-800">{successMessage}</p>
                 </div>
               </div>
             </div>
@@ -379,10 +442,10 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
             <div className="flex gap-3 pt-4">
               <button
                 onClick={handleCompletionSubmit}
-                disabled={isPending}
+                disabled={isPending || isSubmitting || repairCompleted}
                 className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 flex items-center justify-center"
               >
-                {isPending ? (
+                {(isPending || isSubmitting) ? (
                   <>
                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -390,16 +453,100 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
                     </svg>
                     Submitting...
                   </>
+                ) : repairCompleted ? (
+                  'Repair Completed'
                 ) : (
                   'Submit Repair Completion'
                 )}
               </button>
               <button
                 onClick={handleCancel}
-                disabled={isPending}
+                disabled={isPending || isSubmitting}
                 className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition duration-300"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Repair Completed Confirmation */}
+      {(repairCompleted || repair.status !== 'PENDING') && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Repair Completed</h2>
+          
+          {successMessage && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-green-800">{successMessage}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="text-center">
+            <p className="text-gray-600 mb-4">
+              {repair.status === 'COMPLETED' 
+                ? 'The repair has been successfully completed and recorded in the system.'
+                : repair.status === 'CANCELLED'
+                ? 'The repair has been cancelled and recorded in the system.'
+                : 'The repair has been processed and recorded in the system.'
+              }
+            </p>
+            
+            {/* Show remaining repairs if any */}
+            {remainingRepairs.length > 0 && (
+              <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-lg font-semibold text-blue-900 mb-3">
+                  Additional Repairs Required
+                </h3>
+                <p className="text-blue-800 mb-4">
+                  This item has {remainingRepairs.length} additional repair{remainingRepairs.length > 1 ? 's' : ''} that need to be completed:
+                </p>
+                <div className="space-y-2 mb-4">
+                  {remainingRepairs.map((remainingRepair) => (
+                    <div key={remainingRepair.id} className="flex items-center justify-between bg-white p-3 rounded border">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(remainingRepair.priority)}`}>
+                            {getPriorityLabel(remainingRepair.priority)}
+                          </span>
+                          <span className="font-medium text-gray-900 capitalize">
+                            {formatRepairType(remainingRepair.repairType)}
+                          </span>
+                        </div>
+                        {remainingRepair.description && (
+                          <p className="text-sm text-gray-600">{remainingRepair.description}</p>
+                        )}
+                      </div>
+                      <a
+                        href={`/repair-workflow/${remainingRepair.id}`}
+                        className="ml-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 px-4 rounded-lg transition duration-300"
+                      >
+                        Start Repair
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={handleCancel}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 flex items-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                Return to Dashboard
               </button>
             </div>
           </div>

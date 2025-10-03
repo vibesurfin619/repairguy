@@ -3,15 +3,16 @@ import { getRepairWithWorkflow } from '@/actions/repair-workflow';
 import RepairWorkflowClient from './RepairWorkflowClient';
 
 interface RepairWorkflowPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default async function RepairWorkflowPage({ params }: RepairWorkflowPageProps) {
   const user = await requireAuth();
   
-  const result = await getRepairWithWorkflow(params.id);
+  const resolvedParams = await params;
+  const result = await getRepairWithWorkflow(resolvedParams.id);
   
   if (!result.success) {
     return (
@@ -44,8 +45,8 @@ export default async function RepairWorkflowPage({ params }: RepairWorkflowPageP
   return (
     <div className="min-h-screen bg-gray-50">
       <RepairWorkflowClient 
-        repair={result.repair} 
-        workflow={result.workflow}
+        repair={result.repair as any} 
+        workflow={result.workflow as any}
       />
     </div>
   );

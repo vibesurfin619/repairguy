@@ -1,5 +1,6 @@
 'use server';
 
+import { z } from 'zod';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { outstandingRepairs, workflowDefinitions, workflowFailureAnswers, items, users } from '@/lib/schema';
@@ -54,15 +55,6 @@ export async function getRepairWithWorkflow(repairId: string) {
     }
 
     const repairData = repair[0];
-
-    // Check if repair is in PENDING status
-    if (repairData.status !== 'PENDING') {
-      return { 
-        success: false, 
-        error: `Repair is already ${repairData.status.toLowerCase().replace('_', ' ')}`,
-        repair: repairData 
-      };
-    }
 
     // Find applicable workflow for this repair type
     const workflows = await db.select({
@@ -139,10 +131,14 @@ export async function completeRepair(input: CompleteRepairInput) {
     }
 
     if (existingRepair[0].status !== 'PENDING') {
-      return { success: false, error: `Repair is already ${existingRepair[0].status.toLowerCase().replace('_', ' ')}` };
+      return { 
+        success: false, 
+        error: `Repair is already ${existingRepair[0].status.toLowerCase().replace('_', ' ')}. This repair has already been processed.`,
+        repair: existingRepair[0] // Return the existing repair data
+      };
     }
     
-    // Update the outstanding repair
+    // Update the outstanding repair with a condition to prevent race conditions
     const [updatedRepair] = await db.update(outstandingRepairs)
       .set({
         status: validatedInput.wasSuccessful ? 'COMPLETED' : 'CANCELLED',
@@ -150,10 +146,29 @@ export async function completeRepair(input: CompleteRepairInput) {
         actualCost: validatedInput.wasSuccessful ? 0 : undefined, // Set to 0 for successful repairs
         updatedAt: new Date(),
       })
-      .where(eq(outstandingRepairs.id, validatedInput.repairId))
+      .where(
+        and(
+          eq(outstandingRepairs.id, validatedInput.repairId),
+          eq(outstandingRepairs.status, 'PENDING') // Only update if still PENDING
+        )
+      )
       .returning();
 
     if (!updatedRepair) {
+      // Check if the repair exists but is not PENDING anymore
+      const checkRepair = await db.select()
+        .from(outstandingRepairs)
+        .where(eq(outstandingRepairs.id, validatedInput.repairId))
+        .limit(1);
+      
+      if (checkRepair.length > 0 && checkRepair[0].status !== 'PENDING') {
+        return { 
+          success: false, 
+          error: `Repair is already ${checkRepair[0].status.toLowerCase().replace('_', ' ')}. This repair has already been processed.`,
+          repair: checkRepair[0] // Return the existing repair data
+        };
+      }
+      
       return { success: false, error: 'Failed to update repair' };
     }
 
@@ -176,6 +191,43 @@ export async function completeRepair(input: CompleteRepairInput) {
         .where(eq(items.id, updatedRepair.itemId));
     }
 
+    // Get remaining outstanding repairs for this item (if any)
+    const remainingRepairs = allRepairs.filter(repair => 
+      repair.status === 'PENDING' || repair.status === 'IN_PROGRESS'
+    );
+
+    // Get the failure reason label if repair failed
+    let failureReasonLabel = '';
+    if (!validatedInput.wasSuccessful && validatedInput.failureReason) {
+      // Find the workflow for this repair to get failure answer details
+      const workflows = await db.select()
+        .from(workflowDefinitions)
+        .where(eq(workflowDefinitions.isActive, true));
+      
+      // Filter workflows that apply to this repair type
+      const applicableWorkflows = workflows.filter(workflow => {
+        const appliesTo = workflow.appliesTo as any;
+        return appliesTo?.repairType === updatedRepair.repairType;
+      });
+      
+      if (applicableWorkflows.length > 0) {
+        const workflow = applicableWorkflows.sort((a, b) => b.version - a.version)[0];
+        const failureAnswer = await db.select()
+          .from(workflowFailureAnswers)
+          .where(
+            and(
+              eq(workflowFailureAnswers.workflowId, workflow.id),
+              eq(workflowFailureAnswers.code, validatedInput.failureReason)
+            )
+          )
+          .limit(1);
+        
+        if (failureAnswer.length > 0) {
+          failureReasonLabel = failureAnswer[0].label;
+        }
+      }
+    }
+
     revalidatePath('/dashboard');
     revalidatePath('/repair-workflow');
 
@@ -183,6 +235,13 @@ export async function completeRepair(input: CompleteRepairInput) {
       success: true, 
       repair: updatedRepair,
       itemCompleted: allCompleted,
+      remainingRepairs: remainingRepairs.map(repair => ({
+        id: repair.id,
+        repairType: repair.repairType,
+        description: repair.description,
+        priority: repair.priority,
+      })),
+      failureReasonLabel,
     };
   } catch (error) {
     console.error('Error completing repair:', error);
