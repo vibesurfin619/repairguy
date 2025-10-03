@@ -16,12 +16,16 @@ const startRepairWorkflowSchema = z.object({
 export type StartRepairWorkflowInput = z.infer<typeof startRepairWorkflowSchema>;
 
 export async function startRepairWorkflow(input: StartRepairWorkflowInput) {
+  console.log('startRepairWorkflow called with input:', input);
   const user = await requireAuth();
+  console.log('User authenticated:', user.id);
   
   try {
     const validatedInput = startRepairWorkflowSchema.parse(input);
+    console.log('Input validated:', validatedInput);
     
     // Get the outstanding repair with item details
+    console.log('Looking up outstanding repair:', validatedInput.outstandingRepairId);
     const outstandingRepair = await dbOperations.getQueryBuilder()
       .select({
         id: schema.outstandingRepairs.id,
@@ -40,24 +44,32 @@ export async function startRepairWorkflow(input: StartRepairWorkflowInput) {
       .where(eq(schema.outstandingRepairs.id, validatedInput.outstandingRepairId))
       .limit(1);
     
+    console.log('Outstanding repair query result:', outstandingRepair);
+    
     if (!outstandingRepair.length) {
+      console.log('No outstanding repair found');
       return { success: false, error: 'Outstanding repair not found' };
     }
     
     const repair = outstandingRepair[0];
+    console.log('Found repair:', repair);
     
     // Check if repair is in pending status
     if (repair.status !== 'PENDING') {
+      console.log('Repair status is not PENDING:', repair.status);
       return { success: false, error: 'Repair is not in pending status' };
     }
     
     // Find applicable workflow
+    console.log('Looking for workflow for repair type:', repair.repairType, 'SKU:', repair.item.sku);
     const workflow = await dbOperations.findApplicableWorkflow(
       repair.repairType,
       repair.item.sku
     );
+    console.log('Found workflow:', workflow);
     
     if (!workflow) {
+      console.log('No workflow found');
       return { 
         success: false, 
         error: 'There is no Repair Workflow configured for this item.' 

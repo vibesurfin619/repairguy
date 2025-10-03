@@ -118,19 +118,24 @@ export default function ScanItemModal({ isOpen, onClose }: ScanItemModalProps) {
   };
 
   const handleStartRepair = (outstandingRepairId: string) => {
+    console.log('handleStartRepair called with ID:', outstandingRepairId);
     setStartingRepair(outstandingRepairId);
     setError(null);
     
     startTransition(async () => {
       try {
+        console.log('Calling startRepairWorkflow...');
         const result = await startRepairWorkflow({ outstandingRepairId });
+        console.log('startRepairWorkflow result:', result);
         
         if (result.success && 'repairSession' in result && result.repairSession) {
+          console.log('Success! Navigating to repair session:', result.repairSession.id);
           // Close modal and navigate to repair session
           onClose();
           router.push(`/repair-session/${result.repairSession.id}`);
         } else {
           const errorMessage = 'error' in result ? result.error : 'Failed to start repair workflow';
+          console.log('Error:', errorMessage);
           setError(errorMessage);
         }
       } catch (err) {
@@ -417,7 +422,10 @@ export default function ScanItemModal({ isOpen, onClose }: ScanItemModalProps) {
                         
                         {repair.status === 'PENDING' && (
                           <button
-                            onClick={() => handleStartRepair(repair.id)}
+                            onClick={() => {
+                              console.log('Button clicked for repair:', repair.id, 'status:', repair.status);
+                              handleStartRepair(repair.id);
+                            }}
                             disabled={startingRepair === repair.id}
                             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center"
                           >
