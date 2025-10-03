@@ -16,7 +16,6 @@ export default function DatabasePage() {
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <UserInfo />
-          <RepairSessionsList />
           <ItemsList />
           <WorkflowsList />
           <DatabaseSchema />
@@ -40,36 +39,6 @@ function UserInfo() {
         <p><strong>Authentication:</strong> ✅ Authenticated with Clerk</p>
         <p><strong>Database Access:</strong> ✅ Full access granted</p>
       </div>
-    </div>
-  );
-}
-
-function RepairSessionsList() {
-  const dataApi = useDataApi();
-  const { data: sessions, loading, error } = useDataFetch(
-    () => dataApi.repairSessions.getAll(),
-    []
-  );
-
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-xl font-semibold mb-4">Repair Sessions</h2>
-      {loading && <p className="text-gray-500">Loading...</p>}
-      {error && <p className="text-red-500">Error: {error}</p>}
-      {sessions && (
-        <div>
-          <p className="text-sm text-gray-600 mb-2">Total sessions: {sessions.length}</p>
-          <div className="max-h-48 overflow-y-auto">
-            {sessions.map((session: any) => (
-              <div key={session.id} className="border-b py-2 last:border-b-0">
-                <p className="font-medium">Session {session.id}</p>
-                <p className="text-sm text-gray-600">Status: {session.status}</p>
-                <p className="text-sm text-gray-600">Item: {session.item_id}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -169,7 +138,7 @@ function DatabaseSchema() {
 
 function CustomQuery() {
   const dataApi = useDataApi();
-  const [query, setQuery] = useState('SELECT COUNT(*) as total FROM repair_sessions');
+  const [query, setQuery] = useState('SELECT COUNT(*) as total FROM items');
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

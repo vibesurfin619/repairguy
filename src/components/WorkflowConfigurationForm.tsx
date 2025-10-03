@@ -7,6 +7,7 @@ import {
   updateWorkflowDefinition,
   deleteWorkflowDefinition,
 } from '@/actions/workflows';
+import { uploadWorkflowPng, deleteWorkflowPng } from '@/actions/file-upload';
 import {
   type CreateWorkflowDefinitionInput,
   type UpdateWorkflowDefinitionInput,
@@ -32,6 +33,7 @@ interface WorkflowConfigurationFormProps {
     name: string;
     appliesTo: { repairType: RepairType; sku?: string };
     sopUrl: string;
+    pngFilePath?: string;
     version: number;
     isActive: boolean;
     failureAnswers?: FailureAnswer[];
@@ -52,6 +54,10 @@ export default function WorkflowConfigurationForm({ workflow, mode }: WorkflowCo
     version: workflow?.version || 1,
     isActive: workflow?.isActive !== false,
   });
+  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [currentPngPath, setCurrentPngPath] = useState<string | undefined>(workflow?.pngFilePath);
   
   const [failureAnswers, setFailureAnswers] = useState<FailureAnswer[]>(
     workflow?.failureAnswers || []
@@ -94,6 +100,104 @@ export default function WorkflowConfigurationForm({ workflow, mode }: WorkflowCo
     setFailureAnswers(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/png')) {
+        alert('Please select a PNG file');
+        return;
+      }
+      setSelectedFile(file);
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) return;
+    
+    console.log('Starting file upload:', {
+      fileName: selectedFile.name,
+      fileSize: selectedFile.size,
+      fileType: selectedFile.type
+    });
+    
+    setIsUploading(true);
+    try {
+      // Check file size before processing
+      const maxSizeBytes = 5 * 1024 * 1024; // 5MB limit
+      if (selectedFile.size > maxSizeBytes) {
+        alert(`File size (${(selectedFile.size / 1024 / 1024).toFixed(2)}MB) exceeds the 5MB limit`);
+        setIsUploading(false);
+        return;
+      }
+      
+      // Convert file to base64 using FileReader API (more reliable)
+      console.log('Converting file to base64 using FileReader...');
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove the data:image/png;base64, prefix
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(selectedFile);
+      });
+      
+      console.log('Base64 conversion complete, length:', base64.length);
+      
+      const workflowId = workflow?.id || 'temp_' + Date.now();
+      
+      console.log('Calling uploadWorkflowPng with workflowId:', workflowId);
+      
+      const result = await uploadWorkflowPng({
+        fileName: selectedFile.name,
+        fileData: base64,
+        workflowId,
+      });
+      
+      console.log('Upload result:', result);
+      
+      if (result.success) {
+        setCurrentPngPath(result.filePath);
+        setSelectedFile(null);
+        // Reset file input
+        const fileInput = document.getElementById('pngFile') as HTMLInputElement;
+        if (fileInput) fileInput.value = '';
+        console.log('File upload successful');
+      } else {
+        console.error('Upload failed:', result.error);
+        alert(`Upload failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('File upload error:', error);
+      console.error('Error details:', {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace'
+      });
+      alert(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemovePng = async () => {
+    if (!currentPngPath) return;
+    
+    try {
+      const result = await deleteWorkflowPng(currentPngPath);
+      if (result.success) {
+        setCurrentPngPath(undefined);
+      } else {
+        alert(result.error);
+      }
+    } catch (error) {
+      console.error('File deletion error:', error);
+      alert('Failed to remove file');
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -101,6 +205,7 @@ export default function WorkflowConfigurationForm({ workflow, mode }: WorkflowCo
       const input = {
         ...formData,
         sku: formData.sku || undefined,
+        pngFilePath: currentPngPath,
         failureAnswers,
       };
 
@@ -236,6 +341,66 @@ export default function WorkflowConfigurationForm({ workflow, mode }: WorkflowCo
           <p className="mt-1 text-xs text-gray-500">
             This document will be displayed to technicians during the repair process.
           </p>
+        </div>
+
+        {/* PNG File Upload */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">
+            Workflow Image (PNG)
+          </label>
+          <div className="mt-1 space-y-4">
+            {/* File Upload Section */}
+            <div className="flex items-center space-x-4">
+              <input
+                type="file"
+                id="pngFile"
+                accept=".png"
+                onChange={handleFileSelect}
+                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              {selectedFile && (
+                <button
+                  type="button"
+                  onClick={handleFileUpload}
+                  disabled={isUploading}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 py-2 rounded-md text-sm font-medium"
+                >
+                  {isUploading ? 'Uploading...' : 'Upload'}
+                </button>
+              )}
+            </div>
+            
+            {/* Current Image Display */}
+            {currentPngPath && (
+              <div className="border rounded-md p-4 bg-gray-50">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700">Current Image:</span>
+                  <button
+                    type="button"
+                    onClick={handleRemovePng}
+                    className="text-red-600 hover:text-red-800 text-sm"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="flex justify-center">
+                  <img
+                    src={`/api/data/workflow-images?path=${encodeURIComponent(currentPngPath)}`}
+                    alt="Workflow preview"
+                    className="max-w-xs max-h-96 object-contain border rounded"
+                    onError={(e) => {
+                      console.error('Failed to load image:', e);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            
+            <p className="text-xs text-gray-500">
+              Upload a PNG image to provide visual guidance for technicians. This image will be displayed alongside the SOP document.
+            </p>
+          </div>
         </div>
 
         {/* Active Status */}

@@ -48,18 +48,6 @@ export const updateOutstandingRepairSchema = z.object({
   completedAt: z.date().optional(),
 });
 
-// Link Repair Session to Outstanding Repair Schema
-export const linkRepairSessionSchema = z.object({
-  repairSessionId: z.string().min(1, 'Repair session ID is required'),
-  outstandingRepairId: z.string().min(1, 'Outstanding repair ID is required'),
-});
-
-// Link Repair Answer to Outstanding Repair Schema
-export const linkRepairAnswerSchema = z.object({
-  repairAnswerId: z.string().min(1, 'Repair answer ID is required'),
-  outstandingRepairId: z.string().min(1, 'Outstanding repair ID is required'),
-});
-
 // Query Outstanding Repairs Schema
 export const queryOutstandingRepairsSchema = z.object({
   itemId: z.string().optional(),
@@ -73,8 +61,6 @@ export const queryOutstandingRepairsSchema = z.object({
 // Type exports
 export type CreateOutstandingRepairInput = z.infer<typeof createOutstandingRepairSchema>;
 export type UpdateOutstandingRepairInput = z.infer<typeof updateOutstandingRepairSchema>;
-export type LinkRepairSessionInput = z.infer<typeof linkRepairSessionSchema>;
-export type LinkRepairAnswerInput = z.infer<typeof linkRepairAnswerSchema>;
 export type QueryOutstandingRepairsInput = z.infer<typeof queryOutstandingRepairsSchema>;
 export type RepairType = z.infer<typeof repairTypeEnum>;
 export type OutstandingRepairStatus = z.infer<typeof outstandingRepairStatusEnum>;

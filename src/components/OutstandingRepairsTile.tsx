@@ -1,18 +1,43 @@
-interface OutstandingRepairsTileProps {
-  repairs: Array<{
-    id: string;
-    repairType: string;
-    status: string;
-    priority: number;
-    description: string | null;
-    estimatedCost: number | null;
-    createdAt: string;
-    itemLp: string | null;
-    technicianName: string | null;
-  }>;
-}
+import { db } from '@/lib/db';
+import { outstandingRepairs, items, users } from '@/lib/schema';
+import { eq, desc, asc, or, count } from 'drizzle-orm';
 
-export function OutstandingRepairsTile({ repairs }: OutstandingRepairsTileProps) {
+export async function OutstandingRepairsTile() {
+  // Query outstanding repairs with PENDING or IN_PROGRESS status (limited to 10 for display)
+  const repairs = await db.select({
+    id: outstandingRepairs.id,
+    repairType: outstandingRepairs.repairType,
+    status: outstandingRepairs.status,
+    priority: outstandingRepairs.priority,
+    description: outstandingRepairs.description,
+    estimatedCost: outstandingRepairs.estimatedCost,
+    createdAt: outstandingRepairs.createdAt,
+    itemLp: items.lp,
+    technicianName: users.name
+  })
+  .from(outstandingRepairs)
+  .leftJoin(items, eq(outstandingRepairs.itemId, items.id))
+  .leftJoin(users, eq(outstandingRepairs.assignedTechnicianId, users.id))
+  .where(
+    or(
+      eq(outstandingRepairs.status, 'PENDING'),
+      eq(outstandingRepairs.status, 'IN_PROGRESS')
+    )
+  )
+  .orderBy(desc(outstandingRepairs.priority), asc(outstandingRepairs.createdAt))
+  .limit(10);
+
+  // Get total count of all outstanding repairs (not limited)
+  const totalCountResult = await db.select({ count: count() })
+    .from(outstandingRepairs)
+    .where(
+      or(
+        eq(outstandingRepairs.status, 'PENDING'),
+        eq(outstandingRepairs.status, 'IN_PROGRESS')
+      )
+    );
+  
+  const totalCount = totalCountResult[0]?.count || 0;
   const getPriorityColor = (priority: number) => {
     switch (priority) {
       case 4:
@@ -58,7 +83,7 @@ export function OutstandingRepairsTile({ repairs }: OutstandingRepairsTileProps)
     <div className="bg-white rounded-lg shadow-md p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-800">Outstanding Repairs</h2>
-        <span className="text-sm text-gray-500">{repairs.length} repairs</span>
+        <span className="text-sm text-gray-500">{totalCount} repairs</span>
       </div>
       
       {repairs.length === 0 ? (
@@ -115,15 +140,15 @@ export function OutstandingRepairsTile({ repairs }: OutstandingRepairsTileProps)
         </div>
       )}
       
-      {repairs.length > 5 && (
+      {totalCount > 5 && (
         <div className="mt-4 pt-4 border-t">
           <p className="text-sm text-gray-500 text-center">
-            Showing 5 of {repairs.length} outstanding repairs
+            Showing 5 of {totalCount} outstanding repairs
           </p>
         </div>
       )}
       
-      {repairs.length > 0 && (
+      {totalCount > 0 && (
         <div className="mt-4 pt-4 border-t">
           <a 
             href="/dashboard/outstanding-repairs" 

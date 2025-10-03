@@ -15,7 +15,8 @@ import { revalidatePath } from 'next/cache';
 export async function syncClerkUsersToDatabase() {
   try {
     // Get all users from Clerk
-    const clerkUsers = await clerkClient.users.getUserList({
+    const clerk = await clerkClient();
+    const clerkUsers = await clerk.users.getUserList({
       limit: 100, // Adjust as needed
     });
     
@@ -69,6 +70,7 @@ export async function syncClerkUsersToDatabase() {
  */
 export async function getAllUsers() {
   try {
+    if (!db) throw new Error('Database not initialized');
     const allUsers = await db.select().from(users);
     
     return {

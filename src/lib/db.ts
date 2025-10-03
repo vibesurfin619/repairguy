@@ -19,74 +19,6 @@ export const db = sql ? drizzle(sql, { schema: { ...schema, ...relations } }) : 
 // Database query helpers using Drizzle ORM
 export const dbOperations = {
 
-  // Repair Sessions Operations
-  async getRepairSessions() {
-    if (!db) throw new Error('Database not initialized');
-    return await db.select().from(schema.repairSessions).orderBy(desc(schema.repairSessions.createdAt));
-  },
-
-  async getRepairSessionById(id: string) {
-    if (!db) throw new Error('Database not initialized');
-    const sessions = await db.select().from(schema.repairSessions).where(eq(schema.repairSessions.id, id));
-    return sessions[0] || null;
-  },
-
-  async getRepairSessionsByTechnicianId(technicianId: string) {
-    if (!db) throw new Error('Database not initialized');
-    return await db
-      .select()
-      .from(schema.repairSessions)
-      .where(eq(schema.repairSessions.technicianId, technicianId))
-      .orderBy(desc(schema.repairSessions.createdAt));
-  },
-
-  async createRepairSession(session: {
-    technicianId: string;
-    itemId: string;
-    workflowVersionId: string;
-    status?: 'IN_PROGRESS' | 'SUBMITTED' | 'ABANDONED';
-  }) {
-    if (!db) throw new Error('Database not initialized');
-    const result = await db
-      .insert(schema.repairSessions)
-      .values({
-        id: randomUUID(),
-        technicianId: session.technicianId,
-        itemId: session.itemId,
-        workflowVersionId: session.workflowVersionId,
-        status: session.status || 'IN_PROGRESS',
-        updatedAt: new Date().toISOString(),
-      })
-      .returning();
-    return result[0];
-  },
-
-  async updateRepairSession(id: string, updates: { 
-    status?: 'IN_PROGRESS' | 'SUBMITTED' | 'ABANDONED';
-    endedAt?: Date;
-  }) {
-    if (!db) throw new Error('Database not initialized');
-    const result = await db
-      .update(schema.repairSessions)
-      .set({
-        ...(updates.status && { status: updates.status }),
-        ...(updates.endedAt && { endedAt: updates.endedAt.toISOString() }),
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(schema.repairSessions.id, id))
-      .returning();
-    return result[0] || null;
-  },
-
-  async deleteRepairSession(id: string) {
-    if (!db) throw new Error('Database not initialized');
-    const result = await db
-      .delete(schema.repairSessions)
-      .where(eq(schema.repairSessions.id, id))
-      .returning({ id: schema.repairSessions.id });
-    return result[0] || null;
-  },
-
   async getItems() {
     if (!db) throw new Error('Database not initialized');
     return await db.select().from(schema.items).orderBy(desc(schema.items.createdAt));
@@ -231,118 +163,10 @@ export const dbOperations = {
     return generalMatchingWorkflows[0] || null;
   },
 
-  // Workflow Questions Operations
-  async getWorkflowQuestions(workflowId: string) {
-    if (!db) throw new Error('Database not initialized');
-    return await db
-      .select()
-      .from(schema.workflowQuestions)
-      .where(eq(schema.workflowQuestions.workflowId, workflowId))
-      .orderBy(asc(schema.workflowQuestions.order));
-  },
 
-  async createWorkflowQuestion(question: {
-    workflowId: string;
-    order: number;
-    prompt: string;
-    key: string;
-    required?: boolean;
-    critical?: boolean;
-    failOnNo?: boolean;
-    helpText?: string;
-  }) {
-    if (!db) throw new Error('Database not initialized');
-    const result = await db
-      .insert(schema.workflowQuestions)
-      .values({
-        id: randomUUID(),
-        workflowId: question.workflowId,
-        order: question.order,
-        prompt: question.prompt,
-        key: question.key,
-        required: question.required !== false,
-        critical: question.critical || false,
-        failOnNo: question.failOnNo || false,
-        helpText: question.helpText,
-        updatedAt: new Date().toISOString(),
-      })
-      .returning();
-    return result[0];
-  },
-
-  async updateWorkflowQuestion(id: string, updates: {
-    prompt?: string;
-    key?: string;
-    order?: number;
-    required?: boolean;
-    critical?: boolean;
-    failOnNo?: boolean;
-    helpText?: string;
-  }) {
-    if (!db) throw new Error('Database not initialized');
-    const result = await db
-      .update(schema.workflowQuestions)
-      .set({
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(schema.workflowQuestions.id, id))
-      .returning();
-    return result[0] || null;
-  },
-
-  async deleteWorkflowQuestion(id: string) {
-    if (!db) throw new Error('Database not initialized');
-    const result = await db
-      .delete(schema.workflowQuestions)
-      .where(eq(schema.workflowQuestions.id, id))
-      .returning({ id: schema.workflowQuestions.id });
-    return result[0] || null;
-  },
-
-  // Repair Answers Operations
-  async getRepairAnswers(sessionId: string) {
-    if (!db) throw new Error('Database not initialized');
-    return await db
-      .select()
-      .from(schema.repairAnswers)
-      .where(eq(schema.repairAnswers.sessionId, sessionId));
-  },
-
-  async createRepairAnswer(answer: {
-    sessionId: string;
-    questionId: string;
-    answer: boolean;
-    notes?: string;
-  }) {
-    if (!db) throw new Error('Database not initialized');
-    const result = await db
-      .insert(schema.repairAnswers)
-      .values({
-        id: randomUUID(),
-        sessionId: answer.sessionId,
-        questionId: answer.questionId,
-        answer: answer.answer,
-        notes: answer.notes,
-        updatedAt: new Date().toISOString(),
-      })
-      .returning();
-    return result[0];
-  },
-
-  async updateRepairAnswer(id: string, answer: boolean, notes?: string) {
-    if (!db) throw new Error('Database not initialized');
-    const result = await db
-      .update(schema.repairAnswers)
-      .set({
-        answer: answer,
-        notes: notes,
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(schema.repairAnswers.id, id))
-      .returning();
-    return result[0] || null;
-  },
+  // Repair Answers Operations - REMOVED: repairAnswers table no longer exists
+  // These operations have been removed as the repairAnswers table was deleted
+  // in favor of the new repair workflow system
 
   // Users Operations
   async getUsers() {
@@ -366,7 +190,6 @@ export const dbOperations = {
     clerkId: string;
     email: string;
     name?: string;
-    role?: 'TECHNICIAN' | 'ADMIN' | 'SUPERVISOR';
   }) {
     if (!db) throw new Error('Database not initialized');
     const result = await db
@@ -376,7 +199,6 @@ export const dbOperations = {
         clerkId: user.clerkId,
         email: user.email,
         name: user.name,
-        role: user.role || 'TECHNICIAN',
         updatedAt: new Date().toISOString(),
       })
       .returning();
@@ -414,31 +236,13 @@ export const dbOperations = {
   },
 
   // Complex queries with relations
-  async getRepairSessionWithDetails(id: string) {
-    if (!db) throw new Error('Database not initialized');
-    return await db.query.repairSessions.findFirst({
-      where: eq(schema.repairSessions.id, id),
-      with: {
-        item: true,
-        workflowDefinition: true,
-        user: true,
-        repairAnswers: {
-          with: {
-            workflowQuestion: true,
-          },
-        },
-      },
-    });
-  },
 
-  async getWorkflowDefinitionWithQuestions(id: string) {
+  async getWorkflowDefinitionWithFailureAnswers(id: string) {
     if (!db) throw new Error('Database not initialized');
     return await db.query.workflowDefinitions.findFirst({
       where: eq(schema.workflowDefinitions.id, id),
       with: {
-        workflowQuestions: {
-          orderBy: asc(schema.workflowQuestions.order),
-        },
+        workflowFailureAnswers: true,
       },
     });
   },
@@ -593,7 +397,7 @@ export const dbOperations = {
 
   async createOutstandingRepair(repair: {
     itemId: string;
-    repairType: string;
+    repairType: 'TROLLEY_REPLACEMENT' | 'HANDLE_REPLACEMENT' | 'LINER_REPLACEMENT' | 'ZIPPER_SLIDER' | 'ZIPPER_TAPE' | 'ZIPPER_FULL_REPLACEMENT' | 'WHEEL_REPLACEMENT' | 'LOCK_REPLACEMENT' | 'LOGO_REPLACEMENT';
     status?: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
     description?: string;
     priority?: number;

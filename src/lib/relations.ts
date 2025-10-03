@@ -1,18 +1,16 @@
 import { relations } from "drizzle-orm/relations";
-import { workflowDefinitions, workflowQuestions, gradingRules, items, repairSessions, users, repairAnswers, labels, outstandingRepairs, repairSessionOutstandingRepairs, repairAnswerOutstandingRepairs } from "./schema";
+import { workflowDefinitions, workflowFailureAnswers, gradingRules, items, users, labels, outstandingRepairs } from "./schema";
 
-export const workflowQuestionsRelations = relations(workflowQuestions, ({one, many}) => ({
+export const workflowFailureAnswersRelations = relations(workflowFailureAnswers, ({one}) => ({
 	workflowDefinition: one(workflowDefinitions, {
-		fields: [workflowQuestions.workflowId],
+		fields: [workflowFailureAnswers.workflowId],
 		references: [workflowDefinitions.id]
 	}),
-	repairAnswers: many(repairAnswers),
 }));
 
 export const workflowDefinitionsRelations = relations(workflowDefinitions, ({many}) => ({
-	workflowQuestions: many(workflowQuestions),
+	workflowFailureAnswers: many(workflowFailureAnswers),
 	gradingRules: many(gradingRules),
-	repairSessions: many(repairSessions),
 }));
 
 export const gradingRulesRelations = relations(gradingRules, ({one}) => ({
@@ -22,45 +20,14 @@ export const gradingRulesRelations = relations(gradingRules, ({one}) => ({
 	}),
 }));
 
-export const repairSessionsRelations = relations(repairSessions, ({one, many}) => ({
-	item: one(items, {
-		fields: [repairSessions.itemId],
-		references: [items.id]
-	}),
-	user: one(users, {
-		fields: [repairSessions.technicianId],
-		references: [users.id]
-	}),
-	workflowDefinition: one(workflowDefinitions, {
-		fields: [repairSessions.workflowVersionId],
-		references: [workflowDefinitions.id]
-	}),
-	repairAnswers: many(repairAnswers),
-	repairSessionOutstandingRepairs: many(repairSessionOutstandingRepairs),
-}));
-
 export const itemsRelations = relations(items, ({many}) => ({
-	repairSessions: many(repairSessions),
 	labels: many(labels),
 	outstandingRepairs: many(outstandingRepairs),
 }));
 
 export const usersRelations = relations(users, ({many}) => ({
-	repairSessions: many(repairSessions),
 	labels: many(labels),
 	assignedOutstandingRepairs: many(outstandingRepairs),
-}));
-
-export const repairAnswersRelations = relations(repairAnswers, ({one, many}) => ({
-	repairSession: one(repairSessions, {
-		fields: [repairAnswers.sessionId],
-		references: [repairSessions.id]
-	}),
-	workflowQuestion: one(workflowQuestions, {
-		fields: [repairAnswers.questionId],
-		references: [workflowQuestions.id]
-	}),
-	repairAnswerOutstandingRepairs: many(repairAnswerOutstandingRepairs),
 }));
 
 export const labelsRelations = relations(labels, ({one}) => ({
@@ -74,7 +41,7 @@ export const labelsRelations = relations(labels, ({one}) => ({
 	}),
 }));
 
-export const outstandingRepairsRelations = relations(outstandingRepairs, ({one, many}) => ({
+export const outstandingRepairsRelations = relations(outstandingRepairs, ({one}) => ({
 	item: one(items, {
 		fields: [outstandingRepairs.itemId],
 		references: [items.id]
@@ -82,29 +49,5 @@ export const outstandingRepairsRelations = relations(outstandingRepairs, ({one, 
 	assignedTechnician: one(users, {
 		fields: [outstandingRepairs.assignedTechnicianId],
 		references: [users.id]
-	}),
-	repairSessionOutstandingRepairs: many(repairSessionOutstandingRepairs),
-	repairAnswerOutstandingRepairs: many(repairAnswerOutstandingRepairs),
-}));
-
-export const repairSessionOutstandingRepairsRelations = relations(repairSessionOutstandingRepairs, ({one}) => ({
-	repairSession: one(repairSessions, {
-		fields: [repairSessionOutstandingRepairs.repairSessionId],
-		references: [repairSessions.id]
-	}),
-	outstandingRepair: one(outstandingRepairs, {
-		fields: [repairSessionOutstandingRepairs.outstandingRepairId],
-		references: [outstandingRepairs.id]
-	}),
-}));
-
-export const repairAnswerOutstandingRepairsRelations = relations(repairAnswerOutstandingRepairs, ({one}) => ({
-	repairAnswer: one(repairAnswers, {
-		fields: [repairAnswerOutstandingRepairs.repairAnswerId],
-		references: [repairAnswers.id]
-	}),
-	outstandingRepair: one(outstandingRepairs, {
-		fields: [repairAnswerOutstandingRepairs.outstandingRepairId],
-		references: [outstandingRepairs.id]
 	}),
 }));

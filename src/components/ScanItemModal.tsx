@@ -4,8 +4,7 @@ import { useState, useTransition, useRef, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { scanItem } from '@/actions/items';
-import { startRepairWorkflow } from '@/actions/repair-sessions';
-import { Item, WorkflowDefinition, RepairSession, OutstandingRepair, User } from '@/lib/schema';
+import { Item, WorkflowDefinition, OutstandingRepair, User } from '@/lib/schema';
 
 interface ScanItemModalProps {
   isOpen: boolean;
@@ -22,7 +21,6 @@ interface OutstandingRepairWithTechnician extends OutstandingRepair {
 
 interface ItemWithDetails extends Item {
   workflow: WorkflowDefinition | null;
-  activeSessions: RepairSession[];
   pendingRepairs: OutstandingRepairWithTechnician[];
   completedRepairs: OutstandingRepairWithTechnician[];
 }
@@ -31,7 +29,6 @@ export default function ScanItemModal({ isOpen, onClose }: ScanItemModalProps) {
   const { user } = useUser();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [startingRepair, setStartingRepair] = useState<string | null>(null);
   const [lp, setLp] = useState('');
   const [scannedItem, setScannedItem] = useState<ItemWithDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +41,6 @@ export default function ScanItemModal({ isOpen, onClose }: ScanItemModalProps) {
       setLp('');
       setScannedItem(null);
       setError(null);
-      setStartingRepair(null);
       // Focus the input when modal opens
       setTimeout(() => inputRef.current?.focus(), 100);
     }
@@ -117,41 +113,10 @@ export default function ScanItemModal({ isOpen, onClose }: ScanItemModalProps) {
     });
   };
 
-  const handleStartRepair = (outstandingRepairId: string) => {
-    console.log('handleStartRepair called with ID:', outstandingRepairId);
-    setStartingRepair(outstandingRepairId);
-    setError(null);
-    
-    startTransition(async () => {
-      try {
-        console.log('Calling startRepairWorkflow...');
-        const result = await startRepairWorkflow({ outstandingRepairId });
-        console.log('startRepairWorkflow result:', result);
-        
-        if (result.success && 'repairSession' in result && result.repairSession) {
-          console.log('Success! Navigating to repair session:', result.repairSession.id);
-          // Close modal and navigate to repair session
-          onClose();
-          router.push(`/repair-session/${result.repairSession.id}`);
-        } else {
-          const errorMessage = 'error' in result ? result.error : 'Failed to start repair workflow';
-          console.log('Error:', errorMessage);
-          setError(errorMessage);
-        }
-      } catch (err) {
-        console.error('Failed to start repair workflow:', err);
-        setError('An unexpected error occurred while starting the repair workflow');
-      } finally {
-        setStartingRepair(null);
-      }
-    });
-  };
-
   const handleClose = () => {
     setLp('');
     setScannedItem(null);
     setError(null);
-    setStartingRepair(null);
     onClose();
   };
 
@@ -362,30 +327,6 @@ export default function ScanItemModal({ isOpen, onClose }: ScanItemModalProps) {
                 </div>
               )}
 
-              {/* Active Repair Sessions */}
-              {scannedItem.activeSessions.length > 0 && (
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-orange-900 mb-4">
-                    Active Repair Sessions ({scannedItem.activeSessions.length})
-                  </h3>
-                  <div className="space-y-3">
-                    {scannedItem.activeSessions.map((session) => (
-                      <div key={session.id} className="bg-white rounded p-3 border border-orange-100">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="font-medium text-gray-900">Session #{session.id.slice(0, 8)}</p>
-                            <p className="text-sm text-gray-600">Started: {new Date(session.startedAt).toLocaleString()}</p>
-                          </div>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSessionStatusColor(session.status)}`}>
-                            {session.status.replace('_', ' ')}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Outstanding Repairs */}
               {scannedItem.pendingRepairs.length > 0 && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
@@ -394,7 +335,7 @@ export default function ScanItemModal({ isOpen, onClose }: ScanItemModalProps) {
                   </h3>
                   <div className="space-y-4">
                     {scannedItem.pendingRepairs.map((repair) => (
-                      <div key={repair.id} className="bg-white rounded-lg p-4 border border-yellow-100 hover:border-yellow-300 transition-colors">
+                      <div key={repair.id} className="bg-white rounded-lg p-4 border border-yellow-100">
                         <div className="flex justify-between items-start mb-3">
                           <div>
                             <h4 className="font-medium text-gray-900">{formatRepairType(repair.repairType)}</h4>
@@ -411,7 +352,7 @@ export default function ScanItemModal({ isOpen, onClose }: ScanItemModalProps) {
                           <p className="text-sm text-gray-700 mb-3">{repair.description}</p>
                         )}
                         
-                        <div className="text-sm mb-3">
+                        <div className="text-sm">
                           <div>
                             <p className="text-gray-500">Assigned Technician</p>
                             <p className="font-medium text-gray-900">
@@ -421,26 +362,21 @@ export default function ScanItemModal({ isOpen, onClose }: ScanItemModalProps) {
                         </div>
                         
                         {repair.status === 'PENDING' && (
-                          <button
-                            onClick={() => {
-                              console.log('Button clicked for repair:', repair.id, 'status:', repair.status);
-                              handleStartRepair(repair.id);
-                            }}
-                            disabled={startingRepair === repair.id}
-                            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center"
-                          >
-                            {startingRepair === repair.id ? (
-                              <>
-                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                Starting Repair...
-                              </>
-                            ) : (
-                              'Start Repair Workflow'
-                            )}
-                          </button>
+                          <div className="mt-4 pt-4 border-t border-yellow-200">
+                            <button
+                              onClick={() => {
+                                // Navigate to repair workflow page
+                                router.push(`/repair-workflow/${repair.id}`);
+                                handleClose();
+                              }}
+                              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-300 flex items-center justify-center"
+                            >
+                              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                              Start Repair
+                            </button>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -545,19 +481,6 @@ function getStatusColor(status: string): string {
     case 'REQUIRES_REVIEW':
       return 'bg-orange-100 text-orange-800';
     case 'SCRAP':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-}
-
-function getSessionStatusColor(status: string): string {
-  switch (status) {
-    case 'IN_PROGRESS':
-      return 'bg-blue-100 text-blue-800';
-    case 'SUBMITTED':
-      return 'bg-green-100 text-green-800';
-    case 'ABANDONED':
       return 'bg-red-100 text-red-800';
     default:
       return 'bg-gray-100 text-gray-800';

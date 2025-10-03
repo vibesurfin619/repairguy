@@ -7,16 +7,12 @@ import { revalidatePath } from 'next/cache';
 import {
   createWorkflowDefinitionSchema,
   updateWorkflowDefinitionSchema,
-  createWorkflowQuestionSchema,
-  updateWorkflowQuestionSchema,
   createGradingRuleSchema,
   updateGradingRuleSchema,
   findApplicableWorkflowSchema,
   failureAnswerSchema,
   type CreateWorkflowDefinitionInput,
   type UpdateWorkflowDefinitionInput,
-  type CreateWorkflowQuestionInput,
-  type UpdateWorkflowQuestionInput,
   type CreateGradingRuleInput,
   type UpdateGradingRuleInput,
   type FindApplicableWorkflowInput,
@@ -40,6 +36,7 @@ export async function createWorkflowDefinition(input: CreateWorkflowDefinitionIn
       name: validatedInput.name,
       appliesTo,
       sopUrl: validatedInput.sopUrl,
+      pngFilePath: validatedInput.pngFilePath,
       version: validatedInput.version,
       isActive: validatedInput.isActive,
     });
@@ -80,6 +77,7 @@ export async function updateWorkflowDefinition(input: UpdateWorkflowDefinitionIn
     const updates: any = {};
     if (validatedInput.name) updates.name = validatedInput.name;
     if (validatedInput.sopUrl) updates.sopUrl = validatedInput.sopUrl;
+    if (validatedInput.pngFilePath !== undefined) updates.pngFilePath = validatedInput.pngFilePath;
     if (validatedInput.version) updates.version = validatedInput.version;
     if (validatedInput.isActive !== undefined) updates.isActive = validatedInput.isActive;
     
@@ -155,55 +153,6 @@ export async function deleteWorkflowDefinition(workflowId: string) {
   }
 }
 
-// Workflow Question Actions
-export async function createWorkflowQuestion(input: CreateWorkflowQuestionInput) {
-  const user = await requireAuth();
-  
-  
-  try {
-    const validatedInput = createWorkflowQuestionSchema.parse(input);
-    
-    const question = await dbOperations.createWorkflowQuestion(validatedInput);
-    
-    revalidatePath('/dashboard/workflows');
-    return { success: true, question };
-  } catch (error) {
-    console.error('Failed to create workflow question:', error);
-    return { 
-      success: false, 
-      error: error instanceof z.ZodError 
-        ? `Validation error: ${error.issues.map(e => e.message).join(', ')}` 
-        : 'Failed to create workflow question' 
-    };
-  }
-}
-
-export async function updateWorkflowQuestion(input: UpdateWorkflowQuestionInput) {
-  const user = await requireAuth();
-  
-
-  try {
-    const validatedInput = updateWorkflowQuestionSchema.parse(input);
-    
-    const { id, ...updates } = validatedInput;
-    const question = await dbOperations.updateWorkflowQuestion(id, updates);
-    
-    if (!question) {
-      return { success: false, error: 'Question not found' };
-    }
-    
-    revalidatePath('/dashboard/workflows');
-    return { success: true, question };
-  } catch (error) {
-    console.error('Failed to update workflow question:', error);
-    return { 
-      success: false, 
-      error: error instanceof z.ZodError 
-        ? `Validation error: ${error.issues.map(e => e.message).join(', ')}` 
-        : 'Failed to update workflow question' 
-    };
-  }
-}
 
 // Grading Rule Actions
 export async function createGradingRule(input: CreateGradingRuleInput) {
@@ -245,7 +194,6 @@ export async function findApplicableWorkflow(input: FindApplicableWorkflowInput)
     }
     
     // Get related data
-    const questions = await dbOperations.getWorkflowQuestions(workflow.id);
     const gradingRules = await dbOperations.getGradingRules(workflow.id);
     const failureAnswers = await dbOperations.getWorkflowFailureAnswers(workflow.id);
     
@@ -253,7 +201,6 @@ export async function findApplicableWorkflow(input: FindApplicableWorkflowInput)
       success: true, 
       workflow: {
         ...workflow,
-        questions,
         gradingRules,
         failureAnswers,
       }

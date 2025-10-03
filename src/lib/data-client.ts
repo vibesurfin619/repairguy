@@ -20,16 +20,6 @@ export interface ApiResponse<T = any> {
   authenticatedUser?: string;
 }
 
-export interface RepairSession {
-  id: string;
-  user_id: string;
-  item_id: string;
-  workflow_definition_id: string;
-  status: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
 
 export interface Item {
   id: string;
@@ -53,17 +43,6 @@ export interface WorkflowDefinition {
   updated_at: string;
 }
 
-export interface WorkflowQuestion {
-  id: string;
-  workflow_definition_id: string;
-  question_text: string;
-  question_type: string;
-  options?: any;
-  step_order: number;
-  is_required: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 /**
  * Custom hook for making authenticated API requests
@@ -103,34 +82,6 @@ export function useDataApi() {
     }
   };
 
-  // Repair Sessions API
-  const repairSessions = {
-    // Get all repair sessions
-    getAll: () => makeRequest<RepairSession[]>('/repair-sessions'),
-    
-    // Get specific repair session
-    getById: (id: string) => makeRequest<RepairSession>(`/repair-sessions/${id}`),
-    
-    // Create new repair session
-    create: (session: Partial<RepairSession>) =>
-      makeRequest<RepairSession>('/repair-sessions', {
-        method: 'POST',
-        body: JSON.stringify(session),
-      }),
-    
-    // Update repair session
-    update: (id: string, updates: Partial<RepairSession>) =>
-      makeRequest<RepairSession>(`/repair-sessions/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(updates),
-      }),
-    
-    // Delete repair session
-    delete: (id: string) =>
-      makeRequest(`/repair-sessions/${id}`, {
-        method: 'DELETE',
-      }),
-  };
 
   // Items API
   const items = {
@@ -156,17 +107,6 @@ export function useDataApi() {
         method: 'POST',
         body: JSON.stringify(workflow),
       }),
-    
-    // Get questions for a workflow
-    getQuestions: (workflowId: string) =>
-      makeRequest<WorkflowQuestion[]>(`/workflows/${workflowId}/questions`),
-    
-    // Create new workflow question
-    createQuestion: (workflowId: string, question: Partial<WorkflowQuestion>) =>
-      makeRequest<WorkflowQuestion>(`/workflows/${workflowId}/questions`, {
-        method: 'POST',
-        body: JSON.stringify(question),
-      }),
   };
 
   // Custom query API
@@ -183,7 +123,6 @@ export function useDataApi() {
   };
 
   return {
-    repairSessions,
     items,
     workflows,
     query,

@@ -1,24 +1,46 @@
 interface DashboardStatsProps {
   stats: {
-    totalRepairSessions: number;
     totalItems: number;
     totalUsers: number;
     totalOutstandingRepairs: number;
-    totalWorkflows: number;
-    totalLabels: number;
+    totalInProgressRepairs: number;
+    totalCompletedRepairs: number;
+    totalFailedRepairs: number;
   };
 }
 
 export function DashboardStats({ stats }: DashboardStatsProps) {
   const statCards = [
     {
-      title: "Total Repair Sessions",
-      value: stats.totalRepairSessions,
-      color: "blue" as const,
-      description: "All repair sessions",
+      title: "Outstanding Repairs",
+      value: stats.totalOutstandingRepairs,
+      color: "orange" as const,
+      description: "Pending repairs",
       icon: (
         <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+        </svg>
+      )
+    },
+    {
+      title: "In Progress Repairs",
+      value: stats.totalInProgressRepairs,
+      color: "blue" as const,
+      description: "Currently being worked on",
+      icon: (
+        <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.293l-3-3a1 1 0 00-1.414 1.414L10.586 9H7a1 1 0 100 2h3.586l-1.293 1.293a1 1 0 101.414 1.414l3-3a1 1 0 000-1.414z" clipRule="evenodd" />
+        </svg>
+      )
+    },
+    {
+      title: "Completed Repairs",
+      value: stats.totalCompletedRepairs,
+      color: "green" as const,
+      description: "Successfully completed",
+      icon: (
+        <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
         </svg>
       )
     },
@@ -45,35 +67,13 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
       )
     },
     {
-      title: "Outstanding Repairs",
-      value: stats.totalOutstandingRepairs,
-      color: "orange" as const,
-      description: "Pending repairs",
+      title: "Failed Repairs",
+      value: stats.totalFailedRepairs,
+      color: "red" as const,
+      description: "Repairs that failed",
       icon: (
         <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-        </svg>
-      )
-    },
-    {
-      title: "Workflow Definitions",
-      value: stats.totalWorkflows,
-      color: "indigo" as const,
-      description: "Available workflows",
-      icon: (
-        <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" clipRule="evenodd" />
-        </svg>
-      )
-    },
-    {
-      title: "Labels Generated",
-      value: stats.totalLabels,
-      color: "teal" as const,
-      description: "Printed labels",
-      icon: (
-        <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
         </svg>
       )
     }
@@ -91,7 +91,7 @@ export function DashboardStats({ stats }: DashboardStatsProps) {
 interface StatCardProps {
   title: string;
   value: number;
-  color: 'blue' | 'green' | 'purple' | 'orange' | 'indigo' | 'teal';
+  color: 'blue' | 'green' | 'purple' | 'orange' | 'indigo' | 'teal' | 'red';
   description: string;
   icon: React.ReactNode;
 }
@@ -103,7 +103,8 @@ function StatCard({ title, value, color, description, icon }: StatCardProps) {
     purple: 'bg-purple-50 border-purple-200 text-purple-800',
     orange: 'bg-orange-50 border-orange-200 text-orange-800',
     indigo: 'bg-indigo-50 border-indigo-200 text-indigo-800',
-    teal: 'bg-teal-50 border-teal-200 text-teal-800'
+    teal: 'bg-teal-50 border-teal-200 text-teal-800',
+    red: 'bg-red-50 border-red-200 text-red-800'
   };
 
   const iconClasses = {
@@ -112,7 +113,8 @@ function StatCard({ title, value, color, description, icon }: StatCardProps) {
     purple: 'text-purple-600',
     orange: 'text-orange-600',
     indigo: 'text-indigo-600',
-    teal: 'text-teal-600'
+    teal: 'text-teal-600',
+    red: 'text-red-600'
   };
 
   return (

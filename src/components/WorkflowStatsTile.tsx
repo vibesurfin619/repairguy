@@ -3,12 +3,15 @@ interface WorkflowStatsTileProps {
     name: string;
     version: number;
     isActive: boolean;
-    sessionCount: number;
+    sessionCount: number; // This now represents outstanding repairs count
   }>;
 }
 
 export function WorkflowStatsTile({ workflows }: WorkflowStatsTileProps) {
-  const totalSessions = workflows.reduce((sum, workflow) => sum + workflow.sessionCount, 0);
+  const totalOutstandingRepairs = workflows.reduce((sum, workflow) => {
+    const repairCount = Number(workflow.sessionCount) || 0;
+    return sum + repairCount;
+  }, 0);
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -27,7 +30,8 @@ export function WorkflowStatsTile({ workflows }: WorkflowStatsTileProps) {
       ) : (
         <div className="space-y-3">
           {workflows.map((workflow, index) => {
-            const percentage = totalSessions > 0 ? (workflow.sessionCount / totalSessions) * 100 : 0;
+            const repairCount = Number(workflow.sessionCount) || 0;
+            const percentage = totalOutstandingRepairs > 0 ? (repairCount / totalOutstandingRepairs) * 100 : 0;
             
             return (
               <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -65,9 +69,9 @@ export function WorkflowStatsTile({ workflows }: WorkflowStatsTileProps) {
                 
                 <div className="text-right ml-4">
                   <span className="text-lg font-semibold text-gray-800">
-                    {workflow.sessionCount}
+                    {repairCount}
                   </span>
-                  <p className="text-xs text-gray-500">sessions</p>
+                  <p className="text-xs text-gray-500">repairs</p>
                 </div>
               </div>
             );
@@ -78,8 +82,8 @@ export function WorkflowStatsTile({ workflows }: WorkflowStatsTileProps) {
       {workflows.length > 0 && (
         <div className="mt-4 pt-4 border-t">
           <div className="flex justify-between text-sm text-gray-600">
-            <span>Total Sessions</span>
-            <span className="font-medium">{totalSessions}</span>
+            <span>Total Outstanding Repairs</span>
+            <span className="font-medium">{totalOutstandingRepairs}</span>
           </div>
           
           <div className="mt-2">

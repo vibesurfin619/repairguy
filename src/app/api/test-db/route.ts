@@ -4,8 +4,7 @@ import dbOperations from '@/lib/db'
 
 export const GET = withAuth(async (req: NextRequest, { userId }) => {
   try {
-    // Test the database connection by getting repair session and item counts
-    const sessions = await dbOperations.getRepairSessions()
+    // Test the database connection by getting item counts
     const items = await dbOperations.getItems()
     
     return NextResponse.json({
@@ -13,16 +12,16 @@ export const GET = withAuth(async (req: NextRequest, { userId }) => {
       message: 'Database connected successfully using Drizzle ORM!',
       authenticatedUser: userId,
       data: {
-        repairSessionsCount: sessions.length,
         itemsCount: items.length,
         tables: [
-          'repair_sessions', 
-          'repair_answers',
           'items',
           'workflow_definitions',
-          'workflow_questions',
+          'workflow_failure_answers',
           'grading_rules',
-          'labels'
+          'labels',
+          'outstanding_repairs',
+          'repair_answer_outstanding_repairs',
+          'users'
         ]
       }
     })

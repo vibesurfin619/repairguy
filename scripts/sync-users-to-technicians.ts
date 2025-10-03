@@ -6,9 +6,9 @@
  */
 
 import { clerkClient } from '@clerk/nextjs/server';
-import { db } from '../src/lib/db';
-import { users } from '../src/lib/schema';
+import { dbOperations } from '../src/lib/db';
 import { eq } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
 
 async function syncAllUsersToDatabase() {
   console.log('🚀 Starting user sync to database...');
@@ -16,7 +16,8 @@ async function syncAllUsersToDatabase() {
   try {
     // Get all users from Clerk
     console.log('📋 Fetching users from Clerk...');
-    const clerkUsers = await clerkClient.users.getUserList({
+    const clerk = await clerkClient();
+    const clerkUsers = await clerk.users.getUserList({
       limit: 100, // Adjust as needed for your user count
     });
     
@@ -35,22 +36,16 @@ async function syncAllUsersToDatabase() {
         console.log(`Processing user: ${clerkUser.emailAddresses[0]?.emailAddress || 'No email'} (${clerkUser.id})`);
         
         // Check if user exists in database
-        const [existingUser] = await db.select()
-          .from(users)
-          .where(eq(users.clerkId, clerkUser.id))
-          .limit(1);
+        const existingUser = await dbOperations.getUserByClerkId(clerkUser.id);
         
         if (!existingUser) {
           // Create new user in database
-          await db.insert(users).values({
-            id: crypto.randomUUID(),
+          await dbOperations.createUser({
             clerkId: clerkUser.id,
             email: clerkUser.emailAddresses[0]?.emailAddress || '',
             name: clerkUser.firstName && clerkUser.lastName 
               ? `${clerkUser.firstName} ${clerkUser.lastName}` 
-              : clerkUser.firstName || null,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
+              : clerkUser.firstName || undefined,
           });
           
           console.log(`✅ Created new user in database`);
@@ -95,4 +90,4 @@ if (require.main === module) {
     });
 }
 
-export { syncAllUsersToTechnicians };
+export { syncAllUsersToDatabase };

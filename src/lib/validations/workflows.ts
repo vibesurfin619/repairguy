@@ -21,6 +21,7 @@ export const createWorkflowDefinitionSchema = z.object({
   repairType: repairTypeEnum,
   sku: z.string().optional(),
   sopUrl: z.string().url('SOP URL must be a valid URL'),
+  pngFilePath: z.string().optional(), // Optional PNG file path
   version: z.number().int().positive().default(1),
   isActive: z.boolean().default(true),
   failureAnswers: z.array(failureAnswerSchema).default([]),
@@ -33,34 +34,12 @@ export const updateWorkflowDefinitionSchema = z.object({
   repairType: repairTypeEnum.optional(),
   sku: z.string().optional(),
   sopUrl: z.string().url().optional(),
+  pngFilePath: z.string().optional(), // Optional PNG file path
   version: z.number().int().positive().optional(),
   isActive: z.boolean().optional(),
   failureAnswers: z.array(failureAnswerSchema).optional(),
 });
 
-// Create workflow question schema
-export const createWorkflowQuestionSchema = z.object({
-  workflowId: z.string().min(1, 'Workflow ID is required'),
-  prompt: z.string().min(1, 'Question prompt is required').max(500),
-  key: z.string().min(1, 'Question key is required').max(100),
-  order: z.number().int().min(0),
-  required: z.boolean().default(true),
-  critical: z.boolean().default(false),
-  failOnNo: z.boolean().default(false),
-  helpText: z.string().max(1000).optional(),
-});
-
-// Update workflow question schema
-export const updateWorkflowQuestionSchema = z.object({
-  id: z.string().min(1, 'Question ID is required'),
-  prompt: z.string().min(1).max(500).optional(),
-  key: z.string().min(1).max(100).optional(),
-  order: z.number().int().min(0).optional(),
-  required: z.boolean().optional(),
-  critical: z.boolean().optional(),
-  failOnNo: z.boolean().optional(),
-  helpText: z.string().max(1000).optional(),
-});
 
 // Create grading rule schema
 export const createGradingRuleSchema = z.object({
@@ -83,7 +62,6 @@ export const queryWorkflowsSchema = z.object({
   repairType: repairTypeEnum.optional(),
   sku: z.string().optional(),
   isActive: z.boolean().optional(),
-  includeQuestions: z.boolean().default(false),
   includeGradingRules: z.boolean().default(false),
 });
 
@@ -104,8 +82,6 @@ export type WorkflowAppliesTo = z.infer<typeof workflowAppliesToSchema>;
 export type FailureAnswer = z.infer<typeof failureAnswerSchema>;
 export type CreateWorkflowDefinitionInput = z.infer<typeof createWorkflowDefinitionSchema>;
 export type UpdateWorkflowDefinitionInput = z.infer<typeof updateWorkflowDefinitionSchema>;
-export type CreateWorkflowQuestionInput = z.infer<typeof createWorkflowQuestionSchema>;
-export type UpdateWorkflowQuestionInput = z.infer<typeof updateWorkflowQuestionSchema>;
 export type CreateGradingRuleInput = z.infer<typeof createGradingRuleSchema>;
 export type UpdateGradingRuleInput = z.infer<typeof updateGradingRuleSchema>;
 export type QueryWorkflowsInput = z.infer<typeof queryWorkflowsSchema>;

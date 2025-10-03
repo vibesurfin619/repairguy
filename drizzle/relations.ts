@@ -1,19 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { workflowDefinitions, workflowQuestions, gradingRules, items, repairSessions, users, repairAnswers, labels, outstandingRepairs, repairSessionOutstandingRepairs, repairAnswerOutstandingRepairs } from "./schema";
-
-export const workflowQuestionsRelations = relations(workflowQuestions, ({one, many}) => ({
-	workflowDefinition: one(workflowDefinitions, {
-		fields: [workflowQuestions.workflowId],
-		references: [workflowDefinitions.id]
-	}),
-	repairAnswers: many(repairAnswers),
-}));
-
-export const workflowDefinitionsRelations = relations(workflowDefinitions, ({many}) => ({
-	workflowQuestions: many(workflowQuestions),
-	gradingRules: many(gradingRules),
-	repairSessions: many(repairSessions),
-}));
+import { workflowDefinitions, gradingRules, items, labels, users, outstandingRepairs, workflowFailureAnswers } from "./schema";
 
 export const gradingRulesRelations = relations(gradingRules, ({one}) => ({
 	workflowDefinition: one(workflowDefinitions, {
@@ -22,45 +8,9 @@ export const gradingRulesRelations = relations(gradingRules, ({one}) => ({
 	}),
 }));
 
-export const repairSessionsRelations = relations(repairSessions, ({one, many}) => ({
-	item: one(items, {
-		fields: [repairSessions.itemId],
-		references: [items.id]
-	}),
-	user: one(users, {
-		fields: [repairSessions.technicianId],
-		references: [users.id]
-	}),
-	workflowDefinition: one(workflowDefinitions, {
-		fields: [repairSessions.workflowVersionId],
-		references: [workflowDefinitions.id]
-	}),
-	repairAnswers: many(repairAnswers),
-	repairSessionOutstandingRepairs: many(repairSessionOutstandingRepairs),
-}));
-
-export const itemsRelations = relations(items, ({many}) => ({
-	repairSessions: many(repairSessions),
-	labels: many(labels),
-	outstandingRepairs: many(outstandingRepairs),
-}));
-
-export const usersRelations = relations(users, ({many}) => ({
-	repairSessions: many(repairSessions),
-	labels: many(labels),
-	outstandingRepairs: many(outstandingRepairs),
-}));
-
-export const repairAnswersRelations = relations(repairAnswers, ({one, many}) => ({
-	repairSession: one(repairSessions, {
-		fields: [repairAnswers.sessionId],
-		references: [repairSessions.id]
-	}),
-	workflowQuestion: one(workflowQuestions, {
-		fields: [repairAnswers.questionId],
-		references: [workflowQuestions.id]
-	}),
-	repairAnswerOutstandingRepairs: many(repairAnswerOutstandingRepairs),
+export const workflowDefinitionsRelations = relations(workflowDefinitions, ({many}) => ({
+	gradingRules: many(gradingRules),
+	workflowFailureAnswers: many(workflowFailureAnswers),
 }));
 
 export const labelsRelations = relations(labels, ({one}) => ({
@@ -74,7 +24,17 @@ export const labelsRelations = relations(labels, ({one}) => ({
 	}),
 }));
 
-export const outstandingRepairsRelations = relations(outstandingRepairs, ({one, many}) => ({
+export const itemsRelations = relations(items, ({many}) => ({
+	labels: many(labels),
+	outstandingRepairs: many(outstandingRepairs),
+}));
+
+export const usersRelations = relations(users, ({many}) => ({
+	labels: many(labels),
+	outstandingRepairs: many(outstandingRepairs),
+}));
+
+export const outstandingRepairsRelations = relations(outstandingRepairs, ({one}) => ({
 	item: one(items, {
 		fields: [outstandingRepairs.itemId],
 		references: [items.id]
@@ -83,28 +43,11 @@ export const outstandingRepairsRelations = relations(outstandingRepairs, ({one, 
 		fields: [outstandingRepairs.assignedTechnicianId],
 		references: [users.id]
 	}),
-	repairSessionOutstandingRepairs: many(repairSessionOutstandingRepairs),
-	repairAnswerOutstandingRepairs: many(repairAnswerOutstandingRepairs),
 }));
 
-export const repairSessionOutstandingRepairsRelations = relations(repairSessionOutstandingRepairs, ({one}) => ({
-	repairSession: one(repairSessions, {
-		fields: [repairSessionOutstandingRepairs.repairSessionId],
-		references: [repairSessions.id]
-	}),
-	outstandingRepair: one(outstandingRepairs, {
-		fields: [repairSessionOutstandingRepairs.outstandingRepairId],
-		references: [outstandingRepairs.id]
-	}),
-}));
-
-export const repairAnswerOutstandingRepairsRelations = relations(repairAnswerOutstandingRepairs, ({one}) => ({
-	repairAnswer: one(repairAnswers, {
-		fields: [repairAnswerOutstandingRepairs.repairAnswerId],
-		references: [repairAnswers.id]
-	}),
-	outstandingRepair: one(outstandingRepairs, {
-		fields: [repairAnswerOutstandingRepairs.outstandingRepairId],
-		references: [outstandingRepairs.id]
+export const workflowFailureAnswersRelations = relations(workflowFailureAnswers, ({one}) => ({
+	workflowDefinition: one(workflowDefinitions, {
+		fields: [workflowFailureAnswers.workflowId],
+		references: [workflowDefinitions.id]
 	}),
 }));

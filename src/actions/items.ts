@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { requireAuth } from '@/lib/auth';
 import { db } from '@/lib/db';
-import { items, repairSessions, workflowDefinitions, outstandingRepairs, users } from '@/lib/schema';
+import { items, workflowDefinitions, outstandingRepairs, users } from '@/lib/schema';
 import { eq, ilike } from 'drizzle-orm';
 import { scanItemSchema, type ScanItemInput } from '@/lib/validations/items';
 
@@ -90,14 +90,6 @@ export async function scanItem(input: ScanItemInput) {
       console.log('Workflow found:', workflowInfo);
     }
 
-    // Get active repair sessions for this item
-    console.log('Fetching active sessions for item:', item.id);
-    const activeSessions = await db.select()
-      .from(repairSessions)
-      .where(eq(repairSessions.itemId, item.id));
-    
-    console.log('Active sessions found:', activeSessions.length);
-
     // Get outstanding repairs for this item
     console.log('Fetching outstanding repairs for item:', item.id);
     const itemOutstandingRepairs = await db.select({
@@ -136,7 +128,6 @@ export async function scanItem(input: ScanItemInput) {
       item: {
         ...item,
         workflow: workflowInfo,
-        activeSessions,
         pendingRepairs,
         completedRepairs
       }
