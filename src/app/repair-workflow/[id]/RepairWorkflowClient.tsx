@@ -55,7 +55,8 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
     
     if (isAlreadyCompleted) {
       setShowCompletionForm(true);
-      setSuccessMessage(`This repair has already been ${repair.status.toLowerCase().replace('_', ' ')}.`);
+      const repairTypeFormatted = formatRepairType(repair.repairType);
+      setSuccessMessage(`${repairTypeFormatted} has already been ${repair.status.toLowerCase().replace('_', ' ')}.`);
     }
   }, [repair.status]);
 
@@ -96,9 +97,10 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
           setRepairCompleted(true);
           // Show success message instead of redirecting
           setError(null);
+          const repairTypeFormatted = formatRepairType(repair.repairType);
           setSuccessMessage(wasSuccessful ? 
-            'Repair completed successfully! The repair has been submitted and recorded.' : 
-            'Repair status updated. The repair could not be completed and has been marked accordingly.'
+            `${repairTypeFormatted} completed` : 
+            `${repairTypeFormatted} could not be completed - ${result.failureReasonLabel || 'Unknown reason'}`
           );
           // Store remaining repairs if any
           if (result.remainingRepairs && result.remainingRepairs.length > 0) {
@@ -111,7 +113,8 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
             setRepairCompleted(true);
             // Show success message instead of redirecting
             setError(null);
-            setSuccessMessage('This repair has already been completed.');
+            const repairTypeFormatted = formatRepairType(repair.repairType);
+            setSuccessMessage(`${repairTypeFormatted} has already been completed.`);
           } else {
             setError(result.error || 'Failed to complete repair');
           }
