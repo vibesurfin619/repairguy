@@ -26,6 +26,7 @@ interface RepairWorkflowClientProps {
   workflow: WorkflowDefinition & {
     failureAnswers: WorkflowFailureAnswer[];
     pngFilePath?: string | null;
+    videoUrl?: string | null;
   };
 }
 
@@ -225,6 +226,27 @@ export default function RepairWorkflowClient({ repair, workflow }: RepairWorkflo
                   e.currentTarget.style.display = 'none';
                 }}
               />
+            </div>
+          </div>
+        )}
+        
+        {/* Video Display */}
+        {workflow.videoUrl && (
+          <div className="mb-4">
+            <p className="text-sm text-gray-500 mb-2">Repair Video</p>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <video
+                src={workflow.videoUrl}
+                controls
+                className="w-full h-auto max-h-96 bg-gray-50"
+                onError={(e) => {
+                  console.error('Failed to load repair video:', e);
+                  // Hide the video if it fails to load
+                  e.currentTarget.style.display = 'none';
+                }}
+              >
+                Your browser does not support the video tag.
+              </video>
             </div>
           </div>
         )}

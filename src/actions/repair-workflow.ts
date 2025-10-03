@@ -71,6 +71,7 @@ export async function getRepairWithWorkflow(repairId: string) {
       appliesTo: workflowDefinitions.appliesTo,
       sopUrl: workflowDefinitions.sopUrl,
       pngFilePath: workflowDefinitions.pngFilePath,
+      videoUrl: workflowDefinitions.videoUrl,
       version: workflowDefinitions.version,
       isActive: workflowDefinitions.isActive,
     })

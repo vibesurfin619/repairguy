@@ -34,6 +34,7 @@ interface WorkflowConfigurationFormProps {
     appliesTo: { repairType: RepairType; sku?: string };
     sopUrl: string;
     pngFilePath?: string;
+    videoUrl?: string;
     version: number;
     isActive: boolean;
     failureAnswers?: FailureAnswer[];
@@ -51,6 +52,7 @@ export default function WorkflowConfigurationForm({ workflow, mode }: WorkflowCo
     repairType: workflow?.appliesTo?.repairType || ('TROLLEY_REPLACEMENT' as RepairType),
     sku: workflow?.appliesTo?.sku || '',
     sopUrl: workflow?.sopUrl || '',
+    videoUrl: workflow?.videoUrl || '',
     version: workflow?.version || 1,
     isActive: workflow?.isActive !== false,
   });
@@ -58,6 +60,7 @@ export default function WorkflowConfigurationForm({ workflow, mode }: WorkflowCo
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [currentPngPath, setCurrentPngPath] = useState<string | undefined>(workflow?.pngFilePath);
+  
   
   const [failureAnswers, setFailureAnswers] = useState<FailureAnswer[]>(
     workflow?.failureAnswers || []
@@ -110,6 +113,7 @@ export default function WorkflowConfigurationForm({ workflow, mode }: WorkflowCo
       setSelectedFile(file);
     }
   };
+
 
   const handleFileUpload = async () => {
     if (!selectedFile) return;
@@ -206,6 +210,7 @@ export default function WorkflowConfigurationForm({ workflow, mode }: WorkflowCo
         ...formData,
         sku: formData.sku || undefined,
         pngFilePath: currentPngPath,
+        videoUrl: formData.videoUrl || undefined,
         failureAnswers,
       };
 
@@ -401,6 +406,24 @@ export default function WorkflowConfigurationForm({ workflow, mode }: WorkflowCo
               Upload a PNG image to provide visual guidance for technicians. This image will be displayed alongside the SOP document.
             </p>
           </div>
+        </div>
+
+        {/* Video URL */}
+        <div>
+          <label htmlFor="videoUrl" className="block text-sm font-medium text-gray-700">
+            Workflow Video URL (Optional)
+          </label>
+          <input
+            type="url"
+            id="videoUrl"
+            value={formData.videoUrl}
+            onChange={(e) => handleInputChange('videoUrl', e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            placeholder="https://example.com/video.mp4"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Enter a URL to a video file (MP4, WebM, etc.) to provide step-by-step visual guidance for technicians.
+          </p>
         </div>
 
         {/* Active Status */}

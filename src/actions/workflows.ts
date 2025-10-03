@@ -37,6 +37,7 @@ export async function createWorkflowDefinition(input: CreateWorkflowDefinitionIn
       appliesTo,
       sopUrl: validatedInput.sopUrl,
       pngFilePath: validatedInput.pngFilePath,
+      videoUrl: validatedInput.videoUrl,
       version: validatedInput.version,
       isActive: validatedInput.isActive,
     });
@@ -78,6 +79,7 @@ export async function updateWorkflowDefinition(input: UpdateWorkflowDefinitionIn
     if (validatedInput.name) updates.name = validatedInput.name;
     if (validatedInput.sopUrl) updates.sopUrl = validatedInput.sopUrl;
     if (validatedInput.pngFilePath !== undefined) updates.pngFilePath = validatedInput.pngFilePath;
+    if (validatedInput.videoUrl !== undefined) updates.videoUrl = validatedInput.videoUrl;
     if (validatedInput.version) updates.version = validatedInput.version;
     if (validatedInput.isActive !== undefined) updates.isActive = validatedInput.isActive;
     

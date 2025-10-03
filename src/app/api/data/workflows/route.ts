@@ -30,12 +30,14 @@ export const GET = withAuth(async (req: NextRequest, { userId }) => {
 export const POST = withAuth(async (req: NextRequest, { userId }) => {
   try {
     const body = await req.json()
-    const { name, appliesTo, sopUrl, version, isActive } = body
+    const { name, appliesTo, sopUrl, pngFilePath, videoUrl, version, isActive } = body
     
     const result = await dbOperations.createWorkflowDefinition({
       name,
       appliesTo,
       sopUrl,
+      pngFilePath,
+      videoUrl,
       version,
       isActive
     })

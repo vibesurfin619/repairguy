@@ -13,6 +13,7 @@ export const workflowDefinitions = pgTable("workflow_definitions", {
 	appliesTo: jsonb().notNull(),
 	sopUrl: text().notNull(),
 	pngFilePath: text(), // Optional PNG file path for workflow images
+	videoUrl: text(), // Optional video URL for workflow videos
 	version: integer().default(1).notNull(),
 	isActive: boolean().default(true).notNull(),
 	createdAt: timestamp({ precision: 3, mode: 'string' }).default(sql`CURRENT_TIMESTAMP`).notNull(),

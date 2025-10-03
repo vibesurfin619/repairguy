@@ -10,6 +10,8 @@ interface WorkflowDefinition {
   name: string;
   appliesTo: { repairType: RepairType; sku?: string };
   sopUrl: string;
+  pngFilePath?: string;
+  videoUrl?: string;
   version: number;
   isActive: boolean;
   createdAt: string;

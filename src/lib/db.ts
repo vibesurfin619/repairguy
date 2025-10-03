@@ -78,6 +78,8 @@ export const dbOperations = {
     name: string;
     appliesTo: any;
     sopUrl: string;
+    pngFilePath?: string;
+    videoUrl?: string;
     version?: number;
     isActive?: boolean;
   }) {
@@ -89,6 +91,8 @@ export const dbOperations = {
         name: workflow.name,
         appliesTo: workflow.appliesTo,
         sopUrl: workflow.sopUrl,
+        pngFilePath: workflow.pngFilePath,
+        videoUrl: workflow.videoUrl,
         version: workflow.version || 1,
         isActive: workflow.isActive !== false,
         updatedAt: new Date().toISOString(),
@@ -101,6 +105,8 @@ export const dbOperations = {
     name?: string;
     appliesTo?: any;
     sopUrl?: string;
+    pngFilePath?: string;
+    videoUrl?: string;
     version?: number;
     isActive?: boolean;
   }) {

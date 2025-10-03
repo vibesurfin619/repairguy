@@ -6,6 +6,8 @@ interface WorkflowDefinition {
   name: string;
   appliesTo?: { repairType?: RepairType; sku?: string };
   sopUrl: string;
+  pngFilePath?: string;
+  videoUrl?: string;
   version: number;
   isActive: boolean;
   createdAt: string;
@@ -69,6 +71,24 @@ export default function WorkflowCard({ workflow, canEdit, isSpecific }: Workflow
                 View Document
               </a>
             </div>
+            
+            {(workflow.pngFilePath || workflow.videoUrl) && (
+              <div className="flex items-center space-x-4">
+                <span className="font-medium">Media:</span>
+                <div className="flex space-x-2">
+                  {workflow.pngFilePath && (
+                    <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">
+                      📷 Image
+                    </span>
+                  )}
+                  {workflow.videoUrl && (
+                    <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">
+                      🎥 Video
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
             
             {workflow.failureAnswers && workflow.failureAnswers.length > 0 && (
               <div className="flex items-center space-x-4">

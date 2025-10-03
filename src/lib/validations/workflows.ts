@@ -22,6 +22,7 @@ export const createWorkflowDefinitionSchema = z.object({
   sku: z.string().optional(),
   sopUrl: z.string().url('SOP URL must be a valid URL'),
   pngFilePath: z.string().optional(), // Optional PNG file path
+  videoUrl: z.string().url('Video URL must be a valid URL').optional(), // Optional video URL
   version: z.number().int().positive().default(1),
   isActive: z.boolean().default(true),
   failureAnswers: z.array(failureAnswerSchema).default([]),
@@ -35,6 +36,7 @@ export const updateWorkflowDefinitionSchema = z.object({
   sku: z.string().optional(),
   sopUrl: z.string().url().optional(),
   pngFilePath: z.string().optional(), // Optional PNG file path
+  videoUrl: z.string().url().optional(), // Optional video URL
   version: z.number().int().positive().optional(),
   isActive: z.boolean().optional(),
   failureAnswers: z.array(failureAnswerSchema).optional(),
